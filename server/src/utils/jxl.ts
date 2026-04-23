@@ -1,10 +1,10 @@
-import { open } from 'node:fs/promises';
+import { FileHandle, open } from 'node:fs/promises';
 import { ExifOrientation } from 'src/enum';
 
 const JXL_CONTAINER_SIGNATURE = Buffer.from([0x00, 0x00, 0x00, 0x0c, 0x4a, 0x58, 0x4c, 0x20, 0x0d, 0x0a, 0x87, 0x0a]);
 const JXL_CODESTREAM_SIGNATURE = Buffer.from([0xff, 0x0a]);
-// Orientation is encoded close to the start of the codestream, so probing the first chunk is enough.
 const JXL_CODESTREAM_PROBE_BYTES = 4096;
+const JXL_BOX_HEADER_BYTES = 16;
 
 class BitReader {
   #offset = 0;
@@ -162,13 +162,92 @@ const collectJxlCodestreamHeader = (input: Buffer, limit = JXL_CODESTREAM_PROBE_
   return null;
 };
 
+const readChunk = async (file: FileHandle, length: number, position: number) => {
+  const buffer = Buffer.alloc(length);
+  const { bytesRead } = await file.read(buffer, 0, length, position);
+  return buffer.subarray(0, bytesRead);
+};
+
+const readContainerCodestreamHeader = async (file: FileHandle, fileSize: number, limit = JXL_CODESTREAM_PROBE_BYTES) => {
+  const output = Buffer.alloc(limit);
+  let copied = 0;
+  let offset = JXL_CONTAINER_SIGNATURE.length;
+  let lastCodestreamBox = false;
+
+  while (offset + 8 <= fileSize && copied < limit && !lastCodestreamBox) {
+    const header = await readChunk(file, JXL_BOX_HEADER_BYTES, offset);
+    if (header.length < 8) {
+      return null;
+    }
+
+    let size = header.readUInt32BE(0);
+    let headSize = 8;
+    let headerLength = 8;
+    if (size === 1) {
+      if (header.length < 16) {
+        return null;
+      }
+
+      size = Number(header.readBigUInt64BE(8));
+      headSize = 16;
+      headerLength = 16;
+    }
+
+    if (size && size <= headSize) {
+      return null;
+    }
+
+    const type = header.toString('ascii', 4, 8);
+    let payloadOffset = offset + headSize;
+    let payloadSize = size ? size - headSize : fileSize - payloadOffset;
+
+    if (type === 'jxlp') {
+      const indexBytes = await readChunk(file, 4, payloadOffset);
+      if (indexBytes.length < 4) {
+        return null;
+      }
+
+      const index = indexBytes.readUInt32BE(0);
+      if (index >= 0x8000_0000) {
+        lastCodestreamBox = true;
+      }
+
+      payloadOffset += 4;
+      payloadSize -= 4;
+    } else if (type === 'jxlc') {
+      lastCodestreamBox = true;
+    }
+
+    if (payloadSize < 0) {
+      return null;
+    }
+
+    if (type === 'jxlc' || type === 'jxlp') {
+      const bytesToRead = Math.min(payloadSize, limit - copied);
+      const payload = await readChunk(file, bytesToRead, payloadOffset);
+      if (payload.length === 0) {
+        return null;
+      }
+
+      payload.copy(output, copied);
+      copied += payload.length;
+    }
+
+    offset += size || Math.max(headerLength, fileSize - offset);
+  }
+
+  return copied > 0 ? output.subarray(0, copied) : null;
+};
+
 export const readJxlIntrinsicOrientation = async (path: string): Promise<ExifOrientation | null> => {
   const file = await open(path, 'r');
 
   try {
-    const buffer = Buffer.alloc(JXL_CODESTREAM_PROBE_BYTES);
-    const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-    const codestreamHeader = collectJxlCodestreamHeader(buffer.subarray(0, bytesRead));
+    const { size } = await file.stat();
+    const prefix = await readChunk(file, JXL_CONTAINER_SIGNATURE.length, 0);
+    const codestreamHeader = prefix.equals(JXL_CONTAINER_SIGNATURE)
+      ? await readContainerCodestreamHeader(file, size)
+      : collectJxlCodestreamHeader(await readChunk(file, JXL_CODESTREAM_PROBE_BYTES, 0));
     return codestreamHeader ? parseJxlIntrinsicOrientation(codestreamHeader) : null;
   } catch {
     return null;

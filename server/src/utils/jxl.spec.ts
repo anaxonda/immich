@@ -5,6 +5,12 @@ import { ExifOrientation } from 'src/enum';
 import { parseJxlIntrinsicOrientation, readJxlIntrinsicOrientation } from 'src/utils/jxl';
 
 const fromHex = (hex: string) => Buffer.from(hex.replaceAll(/\s+/g, ''), 'hex');
+const box = (type: string, payload: Buffer) => {
+  const header = Buffer.alloc(8);
+  header.writeUInt32BE(payload.length + 8, 0);
+  header.write(type, 4, 4, 'ascii');
+  return Buffer.concat([header, payload]);
+};
 
 describe('parseJxlIntrinsicOrientation', () => {
   it('should parse intrinsic orientation from a raw codestream', () => {
@@ -71,5 +77,17 @@ describe('readJxlIntrinsicOrientation', () => {
     await writeFile(file, buffer);
 
     await expect(readJxlIntrinsicOrientation(file)).resolves.toBe(ExifOrientation.Horizontal);
+  });
+
+  it('should find the codestream after large container boxes', async () => {
+    const file = join(tempDir, 'delayed-codestream.jxl');
+    const signature = fromHex(`00 00 00 0c 4a 58 4c 20 0d 0a 87 0a`);
+    const ftyp = fromHex(`00 00 00 14 66 74 79 70 6a 78 6c 20 00 00 00 00 6a 78 6c 20`);
+    const largeXml = box('xml ', Buffer.alloc(5000, 0x78));
+    const codestream = fromHex(`00 00 00 12 6a 78 6c 70 00 00 00 00 ff 0a c9 2d 10 13 00 00 00 51 6a 62 72 64 c0 70 db 00 82 20 08 2d 03 02 40 62 00 a1`);
+
+    await writeFile(file, Buffer.concat([signature, ftyp, largeXml, codestream]));
+
+    await expect(readJxlIntrinsicOrientation(file)).resolves.toBe(ExifOrientation.Rotate90CW);
   });
 });
