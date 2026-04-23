@@ -22,6 +22,7 @@ import {
 } from 'src/enum';
 import { MediaService } from 'src/services/media.service';
 import { AudioStreamInfo, JobCounts, RawImageInfo, VideoFormat, VideoStreamInfo } from 'src/types';
+import * as jxlUtils from 'src/utils/jxl';
 import { AssetFaceFactory } from 'test/factories/asset-face.factory';
 import { AssetFactory } from 'test/factories/asset.factory';
 import { PersonFactory } from 'test/factories/person.factory';
@@ -350,6 +351,7 @@ describe(MediaService.name, () => {
       rawInfo = { width: 100, height: 100, channels: 3 };
       mocks.person.getFaces.mockResolvedValue([]);
       mocks.ocr.getByAssetId.mockResolvedValue([]);
+      vi.spyOn(jxlUtils, 'readJxlIntrinsicOrientation').mockResolvedValue(null);
       mocks.media.decodeImage.mockImplementation((input) =>
         Promise.resolve(
           typeof input === 'string'
@@ -1214,6 +1216,70 @@ describe(MediaService.name, () => {
           edits: [],
         },
         expect.any(String),
+      );
+    });
+
+    it('should apply DB orientation edits for jpeg xl originals when decoded dimensions are still unrotated', async () => {
+      const asset = AssetFactory.from({ originalFileName: 'image.jxl' })
+        .exif({
+          exifImageWidth: 100,
+          exifImageHeight: 50,
+          fileSizeInByte: 5000,
+          orientation: String(ExifOrientation.Rotate90CW),
+        })
+        .build();
+      mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue(getForGenerateThumbnail(asset));
+      vi.spyOn(jxlUtils, 'readJxlIntrinsicOrientation').mockResolvedValue(ExifOrientation.Horizontal);
+
+      await sut.handleGenerateThumbnails({ id: asset.id });
+
+      expect(mocks.media.decodeImage).toHaveBeenCalledOnce();
+      expect(mocks.media.decodeImage).toHaveBeenCalledWith(asset.originalPath, {
+        colorspace: Colorspace.Srgb,
+        processInvalidImages: false,
+        size: 1440,
+      });
+      expect(mocks.media.generateThumbnail).toHaveBeenCalledWith(
+        rawBuffer,
+        expect.objectContaining({
+          edits: [{ action: AssetEditAction.Rotate, parameters: { angle: 90 } }],
+        }),
+        expect.any(String),
+      );
+      expect(mocks.media.generateThumbhash).toHaveBeenCalledWith(
+        rawBuffer,
+        expect.objectContaining({
+          edits: [{ action: AssetEditAction.Rotate, parameters: { angle: 90 } }],
+        }),
+      );
+    });
+
+    it('should not apply DB orientation edits for jpeg xl originals when decoded dimensions are already rotated', async () => {
+      const asset = AssetFactory.from({ originalFileName: 'image.jxl' })
+        .exif({
+          exifImageWidth: 100,
+          exifImageHeight: 50,
+          fileSizeInByte: 5000,
+          orientation: String(ExifOrientation.Rotate90CW),
+        })
+        .build();
+      mocks.assetJob.getForGenerateThumbnailJob.mockResolvedValue(getForGenerateThumbnail(asset));
+      vi.spyOn(jxlUtils, 'readJxlIntrinsicOrientation').mockResolvedValue(ExifOrientation.Rotate90CW);
+
+      await sut.handleGenerateThumbnails({ id: asset.id });
+
+      expect(mocks.media.generateThumbnail).toHaveBeenCalledWith(
+        rawBuffer,
+        expect.objectContaining({
+          edits: [],
+        }),
+        expect.any(String),
+      );
+      expect(mocks.media.generateThumbhash).toHaveBeenCalledWith(
+        rawBuffer,
+        expect.objectContaining({
+          edits: [],
+        }),
       );
     });
 

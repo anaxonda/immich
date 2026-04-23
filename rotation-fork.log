@@ -1,0 +1,44 @@
+Issue #24807 path:
+1. Immich reads orientation from metadata and stores it in the DB.
+2. That orientation is XMP-based (`XMP-tiff:Orientation`), not usable by sharp's normal auto-orient behavior.
+3. During thumbnail/preview generation, Immich does not pass DB orientation into the decode pipeline for original images.
+4. sharp/libvips falls back to auto-orient from EXIF only.
+5. Since the file only has usable orientation in XMP, rotation is not applied.
+
+Our JXL issue path:
+1. Immich reads orientation from metadata and stores it in the DB.
+2. The file has orientation in preserved EXIF/XMP metadata inside the JXL container.
+3. But the JXL codestream itself does not carry intrinsic orientation.
+4. During thumbnail/preview generation, Immich again does not pass DB orientation into the decode pipeline for original images.
+5. The JXL decoder decodes the stored pixel matrix and does not auto-rotate from that preserved metadata form.
+6. So rotation is not applied.
+
+Why both fail:
+- In both cases, the correct orientation is known to Immich metadata/DB.
+- Immich does not explicitly apply that orientation in the decode path.
+- It relies on decoder auto-orientation.
+- Decoder auto-orientation only works for some metadata representations, not all.
+- So files whose orientation is stored in a non-auto-applied form end up wrong.
+
+Shared root problem:
+Immich has the right orientation value, but the image pipeline does not consistently use it.
+
+Safer patch direction:
+- Only do extra JXL handling for `.jxl` files with a non-default DB orientation.
+- For `.jxl` files with DB orientation `null` or `1`, keep current behavior.
+- For `.jxl` files with DB orientation `2..8`, probe for intrinsic JXL codestream/header orientation.
+- If intrinsic JXL orientation exists, do not apply explicit DB orientation.
+- If intrinsic JXL orientation is absent, apply explicit DB orientation.
+
+Current fork implementation:
+- Added a narrow native JXL parser in `server/src/utils/jxl.ts`.
+- It reads the first JXL codestream bytes from either a raw codestream or ISO BMFF container (`jxlc` / `jxlp`) and extracts intrinsic orientation from the image header.
+- `media.service.ts` now uses that parser only for original `.jxl` files with non-default DB orientation.
+- If intrinsic JXL orientation is `1`, Immich applies DB orientation edits explicitly.
+- If intrinsic JXL orientation is `2..8`, Immich leaves orientation to the decoder and does not add explicit edits.
+
+Local verification:
+- The parser returns `1` for the failing Cobb scan JXL.
+- The parser returns `1..8` correctly for synthetic JXL samples with intrinsic orientations `1..8`.
+- `server` TypeScript now passes with `./node_modules/.bin/tsc --noEmit -p tsconfig.json`.
+- Vitest could not be run on this host because the repo is pinned to Node `24.15.0`, while this machine currently has Node `21.6.1`, and Vite/Vitest startup fails on missing `node:util.styleText`.

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { SystemConfig } from 'src/config';
-import { FACE_THUMBNAIL_SIZE, JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
+import { FACE_THUMBNAIL_SIZE, JOBS_ASSET_PAGINATION_SIZE, ORIENTATION_TO_SHARP_ROTATION } from 'src/constants';
 import { ImagePathOptions, StorageCore, ThumbnailPathEntity } from 'src/cores/storage.core';
 import { AssetFile } from 'src/database';
 import { OnEvent, OnJob } from 'src/decorators';
-import { AssetEditAction, CropParameters } from 'src/dtos/editing.dto';
+import { AssetEditAction, AssetEditActionItem, CropParameters, MirrorAxis } from 'src/dtos/editing.dto';
 import { SystemConfigFFmpegDto } from 'src/dtos/system-config.dto';
 import {
   AssetFileType,
@@ -12,6 +12,7 @@ import {
   AssetVisibility,
   AudioCodec,
   Colorspace,
+  ExifOrientation,
   ImageFormat,
   ImmichWorker,
   JobName,
@@ -41,6 +42,7 @@ import {
 } from 'src/types';
 import { getAssetFile, getDimensions } from 'src/utils/asset.util';
 import { checkFaceVisibility, checkOcrVisibility } from 'src/utils/editor';
+import { readJxlIntrinsicOrientation } from 'src/utils/jxl';
 import { BaseConfig, ThumbnailConfig } from 'src/utils/media';
 import { mimeTypes } from 'src/utils/mime-types';
 import { clamp, isFaceImportEnabled, isFacialRecognitionEnabled } from 'src/utils/misc';
@@ -56,7 +58,6 @@ interface UpsertFileOptions {
 }
 
 type ThumbnailAsset = NonNullable<Awaited<ReturnType<AssetJobRepository['getForGenerateThumbnailJob']>>>;
-
 @Injectable()
 export class MediaService extends BaseService {
   videoInterfaces: VideoInterfaces = { dri: [], mali: false };
@@ -271,6 +272,25 @@ export class MediaService extends BaseService {
     return { info, data, colorspace };
   }
 
+  private getOrientationEditOperations(orientation: ExifOrientation): AssetEditActionItem[] {
+    const { angle, flip, flop } = ORIENTATION_TO_SHARP_ROTATION[orientation];
+    const edits: AssetEditActionItem[] = [];
+
+    if (angle) {
+      edits.push({ action: AssetEditAction.Rotate, parameters: { angle } });
+    }
+
+    if (flip) {
+      edits.push({ action: AssetEditAction.Mirror, parameters: { axis: MirrorAxis.Vertical } });
+    }
+
+    if (flop) {
+      edits.push({ action: AssetEditAction.Mirror, parameters: { axis: MirrorAxis.Horizontal } });
+    }
+
+    return edits;
+  }
+
   private async extractOriginalImage(asset: ThumbnailAsset, image: SystemConfig['image'], useEdits = false) {
     const extractEmbedded = image.extractEmbedded && mimeTypes.isRaw(asset.originalFileName);
     const extracted = extractEmbedded ? await this.extractImage(asset.originalPath, image.preview.size) : null;
@@ -283,11 +303,19 @@ export class MediaService extends BaseService {
     const thumbSource = extracted ? extracted.buffer : asset.originalPath;
     const { data, info, colorspace } = await this.decodeImage(
       thumbSource,
-      // only specify orientation to extracted images which don't have EXIF orientation data
-      // or it can double rotate the image
+      // Original files rely on decoder-side orientation handling. Extracted images may not have
+      // orientation metadata, so preserve the DB value in that case.
       extracted ? asset.exifInfo : { ...asset.exifInfo, orientation: null },
       convertFullsize ? undefined : image.preview.size,
     );
+    const orientation = Number(asset.exifInfo.orientation) as ExifOrientation;
+    const orientationEdits =
+      !extracted &&
+      mimeTypes.isJxl(asset.originalFileName) &&
+      orientation > ExifOrientation.Horizontal &&
+      (await readJxlIntrinsicOrientation(asset.originalPath)) === ExifOrientation.Horizontal
+        ? this.getOrientationEditOperations(orientation)
+        : [];
 
     let isTransparent = false;
     if (!extracted && mimeTypes.canBeTransparent(asset.originalPath)) {
@@ -299,6 +327,7 @@ export class MediaService extends BaseService {
       data,
       info,
       colorspace,
+      orientationEdits,
       convertFullsize,
       generateFullsize,
       isTransparent,
@@ -308,7 +337,8 @@ export class MediaService extends BaseService {
   private async generateImageThumbnails(asset: ThumbnailAsset, { image }: SystemConfig, useEdits: boolean = false) {
     // Handle embedded preview extraction for RAW files
     const extractedImage = await this.extractOriginalImage(asset, image, useEdits);
-    const { info, data, colorspace, generateFullsize, convertFullsize, extracted, isTransparent } = extractedImage;
+    const { info, data, colorspace, generateFullsize, convertFullsize, extracted, isTransparent, orientationEdits } =
+      extractedImage;
 
     const previewFormat = image.preview.format;
     this.warnOnTransparencyLoss(isTransparent, previewFormat, asset.id);
@@ -333,7 +363,8 @@ export class MediaService extends BaseService {
     this.storageCore.ensureFolders(previewFile.path);
 
     // generate final images
-    const baseOptions = { colorspace, processInvalidImages: false, raw: info, edits: useEdits ? asset.edits : [] };
+    const edits = [...orientationEdits, ...(useEdits ? asset.edits : [])];
+    const baseOptions = { colorspace, processInvalidImages: false, raw: info, edits };
     const thumbnailOptions = { ...image.thumbnail, ...baseOptions, format: thumbnailFormat };
     const previewOptions = { ...image.preview, ...baseOptions, format: previewFormat };
     const promises = [
@@ -395,7 +426,8 @@ export class MediaService extends BaseService {
     }
 
     const decodedDimensions = { width: info.width, height: info.height };
-    const fullsizeDimensions = useEdits ? getOutputDimensions(asset.edits, decodedDimensions) : decodedDimensions;
+    const normalizedDimensions = orientationEdits.length > 0 ? getOutputDimensions(orientationEdits, decodedDimensions) : decodedDimensions;
+    const fullsizeDimensions = useEdits ? getOutputDimensions(asset.edits, normalizedDimensions) : normalizedDimensions;
 
     return {
       files: fullsizeFile ? [previewFile, thumbnailFile, fullsizeFile] : [previewFile, thumbnailFile],
