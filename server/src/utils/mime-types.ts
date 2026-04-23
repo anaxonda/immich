@@ -146,6 +146,7 @@ export const mimeTypes = {
 
   isAsset: (filename: string) => isType(filename, image) || isType(filename, video),
   isImage: (filename: string) => isType(filename, image),
+  isJxl: (filename: string) => extname(filename).toLowerCase() === '.jxl',
   isWebSupportedImage: (filename: string) => isType(filename, webSupportedImage),
   isPossiblyAnimatedImage: (filename: string) => isType(filename, possiblyAnimatedImage),
   isProfile: (filename: string) => isType(filename, profile),
