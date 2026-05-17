@@ -1,4 +1,9 @@
-***this fork implements correct jxl rotation, when jxl has exif rotation metadata***
+***this fork adds a few local behavior changes on top of upstream Immich***
+
+- Correct JXL rotation for files that only preserve orientation in EXIF/XMP metadata instead of the JXL codestream
+- Ability to hide selected albums from the main Photos timeline
+- Ability to sort assets inside albums by filename (`A-Z` / `Z-A`)
+- Stable tie-breaking for album asset sorting so identical timestamps or filenames still produce deterministic order
 
 <p align="center"> 
   <br/>

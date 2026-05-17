@@ -6,6 +6,7 @@ import { TimeBucketOptions } from 'src/repositories/asset.repository';
 import { BaseService } from 'src/services/base.service';
 import { requireElevatedPermission } from 'src/utils/access';
 import { getMyPartnerIds } from 'src/utils/asset.util';
+import { getPreferences } from 'src/utils/preferences';
 
 @Injectable()
 export class TimelineService extends BaseService {
@@ -41,7 +42,23 @@ export class TimelineService extends BaseService {
       }
     }
 
-    return { ...options, userIds };
+    const preferences = getPreferences((await this.userRepository.getMetadata(auth.user.id)) ?? []);
+    const hiddenTimelineAlbumIds = this.shouldExcludeHiddenTimelineAlbums(dto)
+      ? preferences.albums.hiddenTimelineAlbumIds
+      : undefined;
+
+    return { ...options, excludedAlbumIds: hiddenTimelineAlbumIds?.length ? hiddenTimelineAlbumIds : undefined, userIds };
+  }
+
+  private shouldExcludeHiddenTimelineAlbums(dto: TimeBucketDto) {
+    return (
+      dto.albumId === undefined &&
+      dto.personId === undefined &&
+      dto.tagId === undefined &&
+      dto.isFavorite === undefined &&
+      dto.isTrashed !== true &&
+      (dto.visibility === undefined || dto.visibility === AssetVisibility.Timeline)
+    );
   }
 
   private async timeBucketChecks(auth: AuthDto, dto: TimeBucketDto) {

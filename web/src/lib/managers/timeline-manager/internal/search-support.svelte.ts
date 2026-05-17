@@ -1,5 +1,6 @@
-import { AssetOrder, type AssetResponseDto } from '@immich/sdk';
+import type { AssetResponseDto } from '@immich/sdk';
 import { DateTime } from 'luxon';
+import { AlbumTimelineOrder, isDescendingAlbumOrder } from '$lib/utils/album-order';
 import { plainDateTimeCompare, type TimelineYearMonth } from '$lib/utils/timeline-util';
 import { TimelineManager } from '../timeline-manager.svelte';
 import type { TimelineMonth } from '../timeline-month.svelte';
@@ -124,8 +125,9 @@ export async function retrieveRange(timelineManager: TimelineManager, start: Ass
   if (!endTimelineMonth || !endAsset) {
     return [];
   }
-  const assetOrder: AssetOrder = timelineManager.getAssetOrder();
-  if (plainDateTimeCompare(assetOrder === AssetOrder.Desc, startAsset.localDateTime, endAsset.localDateTime) < 0) {
+  const assetOrder = timelineManager.getAssetOrder() as string | undefined;
+  const isDescending = isDescendingAlbumOrder(assetOrder ?? AlbumTimelineOrder.Desc);
+  if (plainDateTimeCompare(isDescending, startAsset.localDateTime, endAsset.localDateTime) < 0) {
     [startAsset, endAsset] = [endAsset, startAsset];
     // eslint-disable-next-line no-useless-assignment
     [startTimelineMonth, endTimelineMonth] = [endTimelineMonth, startTimelineMonth];

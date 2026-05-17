@@ -59,6 +59,7 @@ describe('getAltText', () => {
       const testDate = new Date('2024-01-01T12:00:00.000Z');
       const asset: TimelineAsset = {
         id: 'test-id',
+        originalFileName: 'test.jpg',
         ownerId: 'test-owner',
         ratio: 1,
         thumbhash: null,
