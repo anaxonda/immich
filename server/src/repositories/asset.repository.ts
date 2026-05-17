@@ -17,7 +17,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { LockableProperty, Stack } from 'src/database';
 import { Chunked, ChunkedArray, DummyValue, GenerateSql } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { AssetFileType, AssetOrder, AssetOrderBy, AssetStatus, AssetType, AssetVisibility } from 'src/enum';
+import { AlbumAssetOrder, AssetFileType, AssetOrderBy, AssetStatus, AssetType, AssetVisibility } from 'src/enum';
 import { DB } from 'src/schema';
 import { AssetAudioTable, AssetKeyframeTable, AssetVideoTable } from 'src/schema/tables/asset-av.table';
 import { AssetExifTable } from 'src/schema/tables/asset-exif.table';
@@ -71,6 +71,7 @@ interface LivePhotoSearchOptions {
 }
 
 interface AssetBuilderOptions {
+  excludedAlbumIds?: string[];
   isFavorite?: boolean;
   isTrashed?: boolean;
   isDuplicate?: boolean;
@@ -88,7 +89,7 @@ interface AssetBuilderOptions {
 }
 
 export interface TimeBucketOptions extends AssetBuilderOptions {
-  order?: AssetOrder;
+  order?: AlbumAssetOrder;
   orderBy?: AssetOrderBy;
 }
 
@@ -96,6 +97,12 @@ export interface TimeBucketItem {
   timeBucket: string;
   count: number;
 }
+
+const isAscendingAlbumOrder = (order?: AlbumAssetOrder) =>
+  order === AlbumAssetOrder.Asc || order === AlbumAssetOrder.FilenameAsc;
+
+const isFilenameAlbumOrder = (order?: AlbumAssetOrder) =>
+  order === AlbumAssetOrder.FilenameAsc || order === AlbumAssetOrder.FilenameDesc;
 
 export interface YearMonthDay {
   day: number;
@@ -708,6 +715,8 @@ export class AssetRepository {
 
   @GenerateSql({ params: [{}] })
   async getTimeBuckets(options: TimeBucketOptions): Promise<TimeBucketItem[]> {
+    const order = isAscendingAlbumOrder(options.order) ? 'asc' : 'desc';
+
     return this.db
       .with('asset', (qb) =>
         qb
@@ -736,6 +745,18 @@ export class AssetRepository {
               .innerJoin('album_asset', 'asset.id', 'album_asset.assetId')
               .where('album_asset.albumId', '=', asUuid(options.albumId!)),
           )
+          .$if(!!options.excludedAlbumIds?.length, (qb) =>
+            qb.where((eb) =>
+              eb.not(
+                eb.exists(
+                  eb
+                    .selectFrom('album_asset')
+                    .whereRef('album_asset.assetId', '=', 'asset.id')
+                    .where('album_asset.albumId', 'in', options.excludedAlbumIds!),
+                ),
+              ),
+            ),
+          )
           .$if(!!options.personId, (qb) => hasPeople(qb, [options.personId!]))
           .$if(!!options.withStacked, (qb) =>
             qb
@@ -756,7 +777,7 @@ export class AssetRepository {
       .select(sql<string>`("timeBucket" AT TIME ZONE 'UTC')::date::text`.as('timeBucket'))
       .select((eb) => eb.fn.countAll<number>().as('count'))
       .groupBy('timeBucket')
-      .orderBy('timeBucket', options.order ?? 'desc')
+      .orderBy('timeBucket', order)
       .execute() as any as Promise<TimeBucketItem[]>;
   }
 
@@ -764,7 +785,11 @@ export class AssetRepository {
     params: [DummyValue.TIME_BUCKET, { withStacked: true }, { user: { id: DummyValue.UUID } }],
   })
   getTimeBucket(timeBucket: string, options: TimeBucketOptions, auth: AuthDto) {
-    const order = options.order ?? 'desc';
+    const dateOrder = isAscendingAlbumOrder(options.order) ? 'asc' : 'desc';
+    const sortByFilename = isFilenameAlbumOrder(options.order);
+    const timeOrderField = options.orderBy === AssetOrderBy.CreatedAt ? 'asset.createdAt' : 'asset.fileCreatedAt';
+    const primaryOrderField = sortByFilename ? 'asset.originalFileName' : timeOrderField;
+    const secondaryOrderField = sortByFilename ? timeOrderField : 'asset.originalFileName';
     const query = this.db
       .with('cte', (qb) =>
         qb
@@ -784,6 +809,8 @@ export class AssetRepository {
             'asset.ownerId',
             'asset.status',
             sql`asset."fileCreatedAt" at time zone 'utc'`.as('fileCreatedAt'),
+            sql`asset."createdAt" at time zone 'utc'`.as('createdAt'),
+            'asset.originalFileName',
             sql`asset."createdAt" at time zone 'utc'`.as('createdAt'),
             eb.fn('encode', ['asset.thumbhash', sql.lit('base64')]).as('thumbhash'),
             'asset_exif.city',
@@ -828,6 +855,18 @@ export class AssetRepository {
               ),
             ),
           )
+          .$if(!!options.excludedAlbumIds?.length, (qb) =>
+            qb.where((eb) =>
+              eb.not(
+                eb.exists(
+                  eb
+                    .selectFrom('album_asset')
+                    .whereRef('album_asset.assetId', '=', 'asset.id')
+                    .where('album_asset.albumId', 'in', options.excludedAlbumIds!),
+                ),
+              ),
+            ),
+          )
           .$if(!!options.personId, (qb) => hasPeople(qb, [options.personId!]))
           .$if(!!options.userIds, (qb) => qb.where('asset.ownerId', '=', anyUuid(options.userIds!)))
           .$if(options.isFavorite !== undefined, (qb) => qb.where('asset.isFavorite', '=', options.isFavorite!))
@@ -867,9 +906,11 @@ export class AssetRepository {
             options.orderBy == AssetOrderBy.CreatedAt
               ? sql`"createdAt"`
               : sql`(asset."localDateTime" AT TIME ZONE 'UTC')::date`,
-            order,
+            dateOrder,
           )
-          .orderBy('asset.fileCreatedAt', order),
+          .orderBy(primaryOrderField, dateOrder)
+          .orderBy(secondaryOrderField, dateOrder)
+          .orderBy('asset.id', dateOrder),
       )
       .with('agg', (qb) =>
         qb
@@ -887,6 +928,8 @@ export class AssetRepository {
             eb.fn.coalesce(eb.fn('array_agg', ['livePhotoVideoId']), sql.lit('{}')).as('livePhotoVideoId'),
             eb.fn.coalesce(eb.fn('array_agg', ['fileCreatedAt']), sql.lit('{}')).as('fileCreatedAt'),
             eb.fn.coalesce(eb.fn('array_agg', ['localOffsetHours']), sql.lit('{}')).as('localOffsetHours'),
+            eb.fn.coalesce(eb.fn('array_agg', ['createdAt']), sql.lit('{}')).as('createdAt'),
+            eb.fn.coalesce(eb.fn('array_agg', ['originalFileName']), sql.lit('{}')).as('originalFileName'),
             eb.fn.coalesce(eb.fn('array_agg', ['createdAt']), sql.lit('{}')).as('createdAt'),
             eb.fn.coalesce(eb.fn('array_agg', ['ownerId']), sql.lit('{}')).as('ownerId'),
             eb.fn.coalesce(eb.fn('array_agg', ['projectionType']), sql.lit('{}')).as('projectionType'),

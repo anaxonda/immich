@@ -2,6 +2,7 @@
   import AlbumSharedLink from '$lib/components/album-page/AlbumSharedLink.svelte';
   import HeaderActionButton from '$lib/components/HeaderActionButton.svelte';
   import OnEvents from '$lib/components/OnEvents.svelte';
+  import { authManager } from '$lib/managers/auth-manager.svelte';
   import UserAvatar from '$lib/components/shared-components/UserAvatar.svelte';
   import {
     getAlbumActions,
@@ -9,11 +10,12 @@
     handleUpdateAlbum,
     handleUpdateUserAlbumRole,
   } from '$lib/services/album.service';
+  import { AlbumTimelineOrder } from '$lib/utils/album-order';
   import {
     AlbumUserRole,
-    AssetOrder,
     getAlbumInfo,
     getAllSharedLinks,
+    updateMyPreferences,
     type AlbumResponseDto,
     type SharedLinkResponseDto,
     type UserResponseDto,
@@ -59,6 +61,27 @@
   const { AddUsers, CreateSharedLink } = $derived(getAlbumActions($t, album));
 
   let sharedLinks: SharedLinkResponseDto[] = $state([]);
+  const getHiddenTimelineAlbumIds = () =>
+    ((authManager.preferences.albums as { hiddenTimelineAlbumIds?: string[] } | undefined)?.hiddenTimelineAlbumIds ??
+      []);
+  const isShownInTimeline = $derived(!getHiddenTimelineAlbumIds().includes(album.id));
+
+  const handleSetShownInTimeline = async (shownInTimeline: boolean) => {
+    const hiddenTimelineAlbumIds = new Set(getHiddenTimelineAlbumIds());
+    if (shownInTimeline) {
+      hiddenTimelineAlbumIds.delete(album.id);
+    } else {
+      hiddenTimelineAlbumIds.add(album.id);
+    }
+
+    const response = await updateMyPreferences({
+      userPreferencesUpdateDto: {
+        albums: { hiddenTimelineAlbumIds: [...hiddenTimelineAlbumIds] },
+      },
+    } as any);
+
+    authManager.setPreferences(response);
+  };
 
   onMount(async () => {
     sharedLinks = await getAllSharedLinks({ albumId: album.id });
@@ -84,13 +107,18 @@
               <Select
                 value={album.order}
                 options={[
-                  { label: $t('newest_first'), value: AssetOrder.Desc },
-                  { label: $t('oldest_first'), value: AssetOrder.Asc },
+                  { label: $t('newest_first'), value: AlbumTimelineOrder.Desc },
+                  { label: $t('oldest_first'), value: AlbumTimelineOrder.Asc },
+                  { label: `${$t('filename')} (A-Z)`, value: AlbumTimelineOrder.FilenameAsc },
+                  { label: `${$t('filename')} (Z-A)`, value: AlbumTimelineOrder.FilenameDesc },
                 ]}
-                onChange={(value) => handleUpdateAlbum(album, { order: value })}
+                onChange={(value) => handleUpdateAlbum(album, { order: value as any })}
               />
             </Field>
           {/if}
+          <Field label={$t('show_in_timeline')} disabled={readOnly}>
+            <Switch checked={isShownInTimeline} onCheckedChange={handleSetShownInTimeline} />
+          </Field>
           <Field label={$t('comments_and_likes')} description={$t('let_others_respond')} disabled={readOnly}>
             <Switch
               checked={album.isActivityEnabled}

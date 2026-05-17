@@ -13319,7 +13319,7 @@
             "in": "query",
             "description": "Sort order for assets within time buckets (ASC for oldest first, DESC for newest first)",
             "schema": {
-              "$ref": "#/components/schemas/AssetOrder"
+              "$ref": "#/components/schemas/AlbumAssetOrder"
             }
           },
           {
@@ -13518,7 +13518,7 @@
             "in": "query",
             "description": "Sort order for assets within time buckets (ASC for oldest first, DESC for newest first)",
             "schema": {
-              "$ref": "#/components/schemas/AssetOrder"
+              "$ref": "#/components/schemas/AlbumAssetOrder"
             }
           },
           {
@@ -15295,6 +15295,16 @@
         ],
         "type": "object"
       },
+      "AlbumAssetOrder": {
+        "description": "Album asset sort order",
+        "enum": [
+          "asc",
+          "desc",
+          "filename-asc",
+          "filename-desc"
+        ],
+        "type": "string"
+      },
       "AlbumResponseDto": {
         "properties": {
           "albumName": {
@@ -15358,7 +15368,7 @@
             "type": "string"
           },
           "order": {
-            "$ref": "#/components/schemas/AssetOrder"
+            "$ref": "#/components/schemas/AlbumAssetOrder"
           },
           "shared": {
             "description": "Is shared album",
@@ -15525,10 +15535,19 @@
         "properties": {
           "defaultAssetOrder": {
             "$ref": "#/components/schemas/AssetOrder"
+          },
+          "hiddenTimelineAlbumIds": {
+            "items": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "required": [
-          "defaultAssetOrder"
+          "defaultAssetOrder",
+          "hiddenTimelineAlbumIds"
         ],
         "type": "object"
       },
@@ -15537,6 +15556,14 @@
         "properties": {
           "defaultAssetOrder": {
             "$ref": "#/components/schemas/AssetOrder"
+          },
+          "hiddenTimelineAlbumIds": {
+            "items": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "type": "object"
@@ -22408,7 +22435,7 @@
             "type": "string"
           },
           "order": {
-            "$ref": "#/components/schemas/AssetOrder"
+            "$ref": "#/components/schemas/AlbumAssetOrder"
           },
           "ownerId": {
             "description": "Owner ID",
@@ -22466,7 +22493,7 @@
             "type": "string"
           },
           "order": {
-            "$ref": "#/components/schemas/AssetOrder"
+            "$ref": "#/components/schemas/AlbumAssetOrder"
           },
           "thumbnailAssetId": {
             "description": "Thumbnail asset ID",
@@ -25118,6 +25145,13 @@
             },
             "type": "array"
           },
+          "originalFileName": {
+            "description": "Array of original filenames for each asset",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "ownerId": {
             "description": "Array of owner IDs for each asset",
             "items": {
@@ -25181,6 +25215,7 @@
           "isTrashed",
           "livePhotoVideoId",
           "localOffsetHours",
+          "originalFileName",
           "ownerId",
           "projectionType",
           "ratio",
@@ -25277,7 +25312,7 @@
             "type": "boolean"
           },
           "order": {
-            "$ref": "#/components/schemas/AssetOrder"
+            "$ref": "#/components/schemas/AlbumAssetOrder"
           }
         },
         "type": "object"

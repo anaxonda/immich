@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { AssetVisibility } from 'src/enum';
+import { AssetVisibility, UserMetadataKey } from 'src/enum';
 import { TimelineService } from 'src/services/timeline.service';
 import { authStub } from 'test/fixtures/auth.stub';
 import { newTestService, ServiceMocks } from 'test/utils';
@@ -10,6 +10,7 @@ describe(TimelineService.name, () => {
 
   beforeEach(() => {
     ({ sut, mocks } = newTestService(TimelineService));
+    mocks.user.getMetadata.mockResolvedValue([]);
   });
 
   describe('getTimeBuckets', () => {
@@ -39,6 +40,30 @@ describe(TimelineService.name, () => {
       expect(mocks.asset.getTimeBuckets).toHaveBeenCalledWith({
         userIds: [authStub.admin.user.id],
         bbox: { west: -70, south: -30, east: 120, north: 55 },
+      });
+    });
+
+    it('should exclude hidden timeline albums from the main timeline', async () => {
+      mocks.user.getMetadata.mockResolvedValue([
+        {
+          key: UserMetadataKey.Preferences,
+          value: { albums: { hiddenTimelineAlbumIds: ['album-1', 'album-2'] } },
+        },
+      ]);
+      mocks.partner.getAll.mockResolvedValue([]);
+      mocks.asset.getTimeBuckets.mockResolvedValue([{ timeBucket: 'bucket', count: 1 }]);
+
+      await sut.getTimeBuckets(authStub.admin, {
+        userId: authStub.admin.user.id,
+        visibility: AssetVisibility.Timeline,
+        withPartners: true,
+      });
+
+      expect(mocks.asset.getTimeBuckets).toHaveBeenCalledWith({
+        excludedAlbumIds: ['album-1', 'album-2'],
+        userIds: [authStub.admin.user.id],
+        visibility: AssetVisibility.Timeline,
+        withPartners: true,
       });
     });
   });

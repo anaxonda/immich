@@ -9,6 +9,7 @@ const getDefaultPreferences = (): UserPreferences => {
   return {
     albums: {
       defaultAssetOrder: AssetOrder.Desc,
+      hiddenTimelineAlbumIds: [],
     },
     folders: {
       enabled: false,

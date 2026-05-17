@@ -6,6 +6,7 @@ import z from 'zod';
 const AlbumsUpdateSchema = z
   .object({
     defaultAssetOrder: AssetOrderSchema.optional(),
+    hiddenTimelineAlbumIds: z.array(z.uuidv4()).optional(),
   })
   .optional()
   .describe('Album preferences')
@@ -117,6 +118,7 @@ const UserPreferencesUpdateSchema = z
 const AlbumsResponseSchema = z
   .object({
     defaultAssetOrder: AssetOrderSchema,
+    hiddenTimelineAlbumIds: z.array(z.uuidv4()),
   })
   .meta({ id: 'AlbumsResponse' });
 

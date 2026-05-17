@@ -1,7 +1,8 @@
-import { AssetOrder, AssetOrderBy } from '@immich/sdk';
+import { AssetOrderBy } from '@immich/sdk';
 import { SvelteSet } from 'svelte/reactivity';
 import type { CommonLayoutOptions } from '$lib/utils/layout-utils';
 import { getJustifiedLayoutFromAssets } from '$lib/utils/layout-utils';
+import { AlbumTimelineOrder, type AlbumTimelineOrder as AlbumTimelineOrderValue } from '$lib/utils/album-order';
 import { getOrderingDate, plainDateTimeCompare } from '$lib/utils/timeline-util';
 import type { TimelineMonth } from './timeline-month.svelte';
 import type { Direction, MoveAsset, TimelineAsset } from './types';
@@ -73,9 +74,53 @@ export class TimelineDay {
     this.#deferredLayout = value;
   }
 
-  sortAssets(sortOrder: AssetOrder = AssetOrder.Desc) {
-    const sortFn = plainDateTimeCompare.bind(undefined, sortOrder === AssetOrder.Asc);
-    this.viewerAssets.sort((a, b) => sortFn(a.asset.fileCreatedAt, b.asset.fileCreatedAt));
+  #compareById(a: ViewerAsset, b: ViewerAsset, descending: boolean) {
+    return a.asset.id.localeCompare(b.asset.id) * (descending ? -1 : 1);
+  }
+
+  #compareByOrderingDate(a: ViewerAsset, b: ViewerAsset, descending: boolean) {
+    const aDate = this.orderBy === AssetOrderBy.CreatedAt ? a.asset.createdAt : a.asset.fileCreatedAt;
+    const bDate = this.orderBy === AssetOrderBy.CreatedAt ? b.asset.createdAt : b.asset.fileCreatedAt;
+    return plainDateTimeCompare(!descending, aDate, bDate);
+  }
+
+  sortAssets(sortOrder: AlbumTimelineOrderValue = AlbumTimelineOrder.Desc) {
+    const sortByFilename =
+      sortOrder === AlbumTimelineOrder.FilenameAsc || sortOrder === AlbumTimelineOrder.FilenameDesc;
+    const descending =
+      sortOrder === AlbumTimelineOrder.Desc || sortOrder === AlbumTimelineOrder.FilenameDesc;
+
+    if (sortByFilename) {
+      this.viewerAssets.sort((a, b) => {
+        const filenameOrder = a.asset.originalFileName.localeCompare(b.asset.originalFileName) * (descending ? -1 : 1);
+        if (filenameOrder !== 0) {
+          return filenameOrder;
+        }
+
+        const orderingDateOrder = this.#compareByOrderingDate(a, b, descending);
+        if (orderingDateOrder !== 0) {
+          return orderingDateOrder;
+        }
+
+        return this.#compareById(a, b, descending);
+      });
+      return;
+    }
+
+    const sortAscending = sortOrder === AlbumTimelineOrder.Asc;
+    this.viewerAssets.sort((a, b) => {
+      const orderingDateOrder = this.#compareByOrderingDate(a, b, !sortAscending);
+      if (orderingDateOrder !== 0) {
+        return orderingDateOrder;
+      }
+
+      const filenameOrder = a.asset.originalFileName.localeCompare(b.asset.originalFileName) * (descending ? -1 : 1);
+      if (filenameOrder !== 0) {
+        return filenameOrder;
+      }
+
+      return this.#compareById(a, b, descending);
+    });
   }
 
   getFirstAsset() {

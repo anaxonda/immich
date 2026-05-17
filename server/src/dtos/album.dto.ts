@@ -4,7 +4,7 @@ import { AlbumUser, AuthSharedLink } from 'src/database';
 import { BulkIdErrorReasonSchema } from 'src/dtos/asset-ids.response.dto';
 import { MapAsset } from 'src/dtos/asset-response.dto';
 import { UserResponseSchema, mapUser } from 'src/dtos/user.dto';
-import { AlbumUserRole, AlbumUserRoleSchema, AssetOrder, AssetOrderSchema } from 'src/enum';
+import { AlbumAssetOrder, AlbumAssetOrderSchema, AlbumUserRole, AlbumUserRoleSchema } from 'src/enum';
 import { MaybeDehydrated } from 'src/types';
 import { asDateString } from 'src/utils/date';
 import { stringToBool } from 'src/validation';
@@ -59,7 +59,7 @@ const UpdateAlbumSchema = z
     description: z.string().optional().describe('Album description'),
     albumThumbnailAssetId: z.uuidv4().optional().describe('Album thumbnail asset ID'),
     isActivityEnabled: z.boolean().optional().describe('Enable activity feed'),
-    order: AssetOrderSchema.optional(),
+    order: AlbumAssetOrderSchema.optional(),
   })
   .meta({ id: 'UpdateAlbumDto' });
 
@@ -133,7 +133,7 @@ export const AlbumResponseSchema = z
     // TODO: use `isoDatetimeToDate` when using `ZodSerializerDto` on the controllers.
     endDate: z.string().meta({ format: 'date-time' }).optional().describe('End date (latest asset)'),
     isActivityEnabled: z.boolean().describe('Activity feed enabled'),
-    order: AssetOrderSchema.optional(),
+    order: AlbumAssetOrderSchema.optional(),
     contributorCounts: z.array(ContributorCountResponseSchema).optional(),
   })
   .meta({ id: 'AlbumResponseDto' });
@@ -161,7 +161,7 @@ export type MapAlbumDto = {
   updatedAt: Date;
   id: string;
   isActivityEnabled: boolean;
-  order: AssetOrder;
+  order: AlbumAssetOrder;
 };
 
 export const mapAlbum = (entity: MaybeDehydrated<MapAlbumDto>): AlbumResponseDto => {

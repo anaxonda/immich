@@ -1,4 +1,4 @@
-import { AssetOrder, AssetOrderBy, type TimeBucketAssetResponseDto } from '@immich/sdk';
+import { AssetOrderBy, type TimeBucketAssetResponseDto } from '@immich/sdk';
 import { t } from 'svelte-i18n';
 import { SvelteSet } from 'svelte/reactivity';
 import { get } from 'svelte/store';
@@ -15,13 +15,14 @@ import {
   fromTimelinePlainDate,
   fromTimelinePlainDateTime,
   fromTimelinePlainYearMonth,
-  fromISODateTimeUTC,
+  fromISODateTimeUTCToObject,
   getTimes,
   setDifference,
   type TimelineDateTime,
   type TimelineYearMonth,
   getOrderingDate,
 } from '$lib/utils/timeline-util';
+import { AlbumTimelineOrder, type AlbumTimelineOrder as AlbumTimelineOrderValue } from '$lib/utils/album-order';
 import { GroupInsertionCache } from './group-insertion-cache.svelte';
 import { TimelineDay } from './timeline-day.svelte';
 import type { TimelineManager } from './timeline-manager.svelte';
@@ -38,7 +39,7 @@ export class TimelineMonth {
   #top: number = $state(0);
 
   #initialCount: number = 0;
-  #sortOrder: AssetOrder = AssetOrder.Desc;
+  #sortOrder: AlbumTimelineOrderValue = AlbumTimelineOrder.Desc;
   #orderBy: AssetOrderBy = AssetOrderBy.TakenAt;
   percent: number = $state(0);
 
@@ -58,7 +59,7 @@ export class TimelineMonth {
     yearMonth: TimelineYearMonth,
     initialCount: number,
     loaded: boolean,
-    order: AssetOrder = AssetOrder.Desc,
+    order: AlbumTimelineOrderValue = AlbumTimelineOrder.Desc,
     orderBy: AssetOrderBy = AssetOrderBy.TakenAt,
   ) {
     this.timelineManager = timelineManager;
@@ -122,7 +123,10 @@ export class TimelineMonth {
   }
 
   sortTimelineDays() {
-    if (this.#sortOrder === AssetOrder.Asc) {
+    if (
+      this.#sortOrder === AlbumTimelineOrder.Asc ||
+      this.#sortOrder === AlbumTimelineOrder.FilenameAsc
+    ) {
       return this.timelineDays.sort((a, b) => a.day - b.day);
     }
 
@@ -183,6 +187,9 @@ export class TimelineMonth {
         country: bucketAssets.country[i],
         duration: bucketAssets.duration[i],
         id: bucketAssets.id[i],
+        originalFileName: (bucketAssets as TimeBucketAssetResponseDto & { originalFileName: string[] }).originalFileName[
+          i
+        ],
         visibility: bucketAssets.visibility[i],
         isFavorite: bucketAssets.isFavorite[i],
         isImage: bucketAssets.isImage[i],
@@ -190,7 +197,7 @@ export class TimelineMonth {
         isVideo: !bucketAssets.isImage[i],
         livePhotoVideoId: bucketAssets.livePhotoVideoId[i],
         localDateTime,
-        createdAt: fromISODateTimeUTC(bucketAssets.createdAt[i]).setZone('local'),
+        createdAt: fromISODateTimeUTCToObject(bucketAssets.createdAt[i]),
         fileCreatedAt,
         ownerId: bucketAssets.ownerId[i],
         projectionType: bucketAssets.projectionType[i],

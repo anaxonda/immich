@@ -17,6 +17,7 @@ export type Direction = 'earlier' | 'later';
 
 export type TimelineAsset = {
   id: string;
+  originalFileName: string;
   ownerId: string;
   tags?: string[];
   ratio: number;

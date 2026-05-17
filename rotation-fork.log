@@ -32,13 +32,17 @@ Safer patch direction:
 
 Current fork implementation:
 - Added a narrow native JXL parser in `server/src/utils/jxl.ts`.
-- It reads the first JXL codestream bytes from either a raw codestream or ISO BMFF container (`jxlc` / `jxlp`) and extracts intrinsic orientation from the image header.
+- It reads JXL intrinsic orientation from either a raw codestream or an ISO BMFF container (`jxlc` / `jxlp`) and extracts intrinsic orientation from the image header.
 - `media.service.ts` now uses that parser only for original `.jxl` files with non-default DB orientation.
 - If intrinsic JXL orientation is `1`, Immich applies DB orientation edits explicitly.
 - If intrinsic JXL orientation is `2..8`, Immich leaves orientation to the decoder and does not add explicit edits.
+- A later hardening pass replaced the fixed-size initial container probe with incremental box scanning, so large boxes ahead of the codestream no longer cause the orientation probe to fail open.
+- We intentionally keep JXL codestream orientation authoritative when present. We do not try to make preserved EXIF metadata override intrinsic JXL orientation, because the current `sharp` / `libvips` decode path already applies codestream orientation during decode.
 
 Local verification:
 - The parser returns `1` for the failing Cobb scan JXL.
 - The parser returns `1..8` correctly for synthetic JXL samples with intrinsic orientations `1..8`.
 - `server` TypeScript now passes with `./node_modules/.bin/tsc --noEmit -p tsconfig.json`.
-- Vitest could not be run on this host because the repo is pinned to Node `24.15.0`, while this machine currently has Node `21.6.1`, and Vite/Vitest startup fails on missing `node:util.styleText`.
+- `src/utils/jxl.spec.ts` passes locally, including a regression case with a large non-codestream box before the `jxlp` codestream box.
+- `src/services/media.service.spec.ts -t "jpeg xl"` passes locally.
+- The full `src/services/media.service.spec.ts` suite also passed locally after the dependency/runtime issues were sorted out.
