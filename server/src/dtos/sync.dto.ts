@@ -2,9 +2,9 @@ import { createZodDto } from 'nestjs-zod';
 import { ExtraModel } from 'src/decorators';
 import { AssetEditActionSchema } from 'src/dtos/editing.dto';
 import {
+  AlbumAssetOrderSchema,
   AlbumUserRole,
   AlbumUserRoleSchema,
-  AssetOrderSchema,
   AssetTypeSchema,
   AssetVisibilitySchema,
   MemoryTypeSchema,
@@ -227,7 +227,7 @@ const SyncAlbumV1Schema = z
     updatedAt: isoDatetimeToDate.describe('Updated at'),
     thumbnailAssetId: z.string().nullable().describe('Thumbnail asset ID'),
     isActivityEnabled: z.boolean().describe('Is activity enabled'),
-    order: AssetOrderSchema,
+    order: AlbumAssetOrderSchema,
   })
   .meta({ id: 'SyncAlbumV1' });
 
@@ -240,7 +240,7 @@ const SyncAlbumV2Schema = z
     updatedAt: isoDatetimeToDate.describe('Updated at'),
     thumbnailAssetId: z.string().nullable().describe('Thumbnail asset ID'),
     isActivityEnabled: z.boolean().describe('Is activity enabled'),
-    order: AssetOrderSchema,
+    order: AlbumAssetOrderSchema,
   })
   .meta({ id: 'SyncAlbumV2' });
 

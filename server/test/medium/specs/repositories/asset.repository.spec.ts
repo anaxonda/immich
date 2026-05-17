@@ -1,5 +1,5 @@
 import { Kysely } from 'kysely';
-import { AssetOrder, AssetVisibility } from 'src/enum';
+import { AlbumAssetOrder, AssetVisibility } from 'src/enum';
 import { AssetRepository } from 'src/repositories/asset.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
 import { DB } from 'src/schema';
@@ -57,7 +57,7 @@ describe(AssetRepository.name, () => {
 
       const descendingBucket = await sut.getTimeBucket(
         '2026-03-01',
-        { order: AssetOrder.Desc, userIds: [user.id], visibility: AssetVisibility.Timeline },
+        { order: AlbumAssetOrder.Desc, userIds: [user.id], visibility: AssetVisibility.Timeline },
         auth,
       );
       expect(JSON.parse(descendingBucket.assets)).toEqual(
@@ -68,12 +68,88 @@ describe(AssetRepository.name, () => {
 
       const ascendingBucket = await sut.getTimeBucket(
         '2026-03-01',
-        { order: AssetOrder.Asc, userIds: [user.id], visibility: AssetVisibility.Timeline },
+        { order: AlbumAssetOrder.Asc, userIds: [user.id], visibility: AssetVisibility.Timeline },
         auth,
       );
       expect(JSON.parse(ascendingBucket.assets)).toEqual(
         expect.objectContaining({
           id: [previousLocalDayAsset.id, nextLocalDayEarlierAsset.id, nextLocalDayLaterAsset.id],
+        }),
+      );
+    });
+
+    it('should order assets by original filename when requested', async () => {
+      const { ctx, sut } = setup();
+      const { user } = await ctx.newUser();
+      const auth = factory.auth({ user: { id: user.id } });
+
+      const createdAt = new Date('2026-03-09T12:00:00.000Z');
+      const [{ asset: zebra }, { asset: alpha }, { asset: middle }] = await Promise.all([
+        ctx.newAsset({ ownerId: user.id, fileCreatedAt: createdAt, localDateTime: createdAt, originalFileName: 'zebra.jpg' }),
+        ctx.newAsset({ ownerId: user.id, fileCreatedAt: createdAt, localDateTime: createdAt, originalFileName: 'alpha.jpg' }),
+        ctx.newAsset({ ownerId: user.id, fileCreatedAt: createdAt, localDateTime: createdAt, originalFileName: 'middle.jpg' }),
+      ]);
+
+      const ascendingBucket = await sut.getTimeBucket(
+        '2026-03-01',
+        { order: AlbumAssetOrder.FilenameAsc, userIds: [user.id], visibility: AssetVisibility.Timeline },
+        auth,
+      );
+      expect(JSON.parse(ascendingBucket.assets)).toEqual(
+        expect.objectContaining({
+          id: [alpha.id, middle.id, zebra.id],
+          originalFileName: ['alpha.jpg', 'middle.jpg', 'zebra.jpg'],
+        }),
+      );
+
+      const descendingBucket = await sut.getTimeBucket(
+        '2026-03-01',
+        { order: AlbumAssetOrder.FilenameDesc, userIds: [user.id], visibility: AssetVisibility.Timeline },
+        auth,
+      );
+      expect(JSON.parse(descendingBucket.assets)).toEqual(
+        expect.objectContaining({
+          id: [zebra.id, middle.id, alpha.id],
+          originalFileName: ['zebra.jpg', 'middle.jpg', 'alpha.jpg'],
+        }),
+      );
+    });
+
+    it('should exclude assets that belong to hidden timeline albums', async () => {
+      const { ctx, sut } = setup();
+      const { user } = await ctx.newUser();
+      const auth = factory.auth({ user: { id: user.id } });
+
+      const createdAt = new Date('2026-03-09T12:00:00.000Z');
+      const { asset: visibleAsset } = await ctx.newAsset({
+        ownerId: user.id,
+        fileCreatedAt: createdAt,
+        localDateTime: createdAt,
+        originalFileName: 'visible.jpg',
+      });
+      const { asset: hiddenAsset } = await ctx.newAsset({
+        ownerId: user.id,
+        fileCreatedAt: createdAt,
+        localDateTime: createdAt,
+        originalFileName: 'hidden.jpg',
+      });
+      const { album } = await ctx.newAlbum({ ownerId: user.id }, [hiddenAsset.id]);
+
+      const bucket = await sut.getTimeBucket(
+        '2026-03-01',
+        {
+          order: AlbumAssetOrder.Desc,
+          userIds: [user.id],
+          visibility: AssetVisibility.Timeline,
+          excludedAlbumIds: [album.id],
+        },
+        auth,
+      );
+
+      expect(JSON.parse(bucket.assets)).toEqual(
+        expect.objectContaining({
+          id: [visibleAsset.id],
+          originalFileName: ['visible.jpg'],
         }),
       );
     });

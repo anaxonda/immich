@@ -576,6 +576,7 @@ export interface SystemMetadata extends Record<SystemMetadataKey, Record<string,
 export type UserPreferences = {
   albums: {
     defaultAssetOrder: AssetOrder;
+    hiddenTimelineAlbumIds: string[];
   };
   folders: {
     enabled: boolean;

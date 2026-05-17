@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from '@immich/sql-tools';
 import { UpdatedAtTrigger, UpdateIdColumn } from 'src/decorators';
-import { AssetOrder } from 'src/enum';
+import { AlbumAssetOrder } from 'src/enum';
 import { AssetTable } from 'src/schema/tables/asset.table';
 
 @Table({ name: 'album' })
@@ -45,8 +45,8 @@ export class AlbumTable {
   @Column({ type: 'boolean', default: true })
   isActivityEnabled!: Generated<boolean>;
 
-  @Column({ default: AssetOrder.Desc })
-  order!: Generated<AssetOrder>;
+  @Column({ default: AlbumAssetOrder.Desc })
+  order!: Generated<AlbumAssetOrder>;
 
   @UpdateIdColumn({ index: true })
   updateId!: Generated<string>;

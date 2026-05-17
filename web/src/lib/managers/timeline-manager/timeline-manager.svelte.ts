@@ -1,4 +1,4 @@
-import { AssetOrder, AssetOrderBy, getAssetInfo, getTimeBuckets, type AssetResponseDto } from '@immich/sdk';
+import { AssetOrderBy, getAssetInfo, getTimeBuckets, type AssetResponseDto } from '@immich/sdk';
 import { clamp, isEqual } from 'lodash-es';
 import { SvelteDate, SvelteSet } from 'svelte/reactivity';
 import { VirtualScrollManager } from '$lib/managers/VirtualScrollManager/VirtualScrollManager.svelte';
@@ -27,6 +27,7 @@ import {
   type TimelineDateTime,
   type TimelineYearMonth,
 } from '$lib/utils/timeline-util';
+import { AlbumTimelineOrder, type AlbumTimelineOrder as AlbumTimelineOrderValue } from '$lib/utils/album-order';
 import { isMismatched, updateObject } from './internal/utils.svelte';
 import { TimelineDay } from './timeline-day.svelte';
 import { TimelineMonth } from './timeline-month.svelte';
@@ -622,7 +623,7 @@ export class TimelineManager extends VirtualScrollManager {
   }
 
   getAssetOrder() {
-    return this.#options.order ?? AssetOrder.Desc;
+    return ((this.#options.order as string | undefined) ?? AlbumTimelineOrder.Desc) as AlbumTimelineOrderValue;
   }
 
   getOrderBy() {

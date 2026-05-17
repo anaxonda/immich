@@ -1,4 +1,4 @@
-import { AssetOrder } from '@immich/sdk';
+import { AlbumTimelineOrder, type AlbumTimelineOrder as AlbumTimelineOrderValue } from '$lib/utils/album-order';
 import { setDifference, type TimelineDate } from '$lib/utils/timeline-util';
 import type { TimelineDay } from './timeline-day.svelte';
 import type { TimelineMonth } from './timeline-month.svelte';
@@ -50,7 +50,7 @@ export class GroupInsertionCache {
     return updated;
   }
 
-  sort(timelineMonth: TimelineMonth, sortOrder: AssetOrder = AssetOrder.Desc) {
+  sort(timelineMonth: TimelineMonth, sortOrder: AlbumTimelineOrderValue = AlbumTimelineOrder.Desc) {
     for (const group of this.changedTimelineDays) {
       group.sortAssets(sortOrder);
     }

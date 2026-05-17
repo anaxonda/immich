@@ -33,7 +33,8 @@ export const assetFactory = Sync.makeFactory<AssetResponseDto>({
 
 export const timelineAssetFactory = Sync.makeFactory<TimelineAsset>({
   id: Sync.each(() => faker.string.uuid()),
-  ratio: Sync.each((i) => 0.2 + ((i * 0.618034) % 3.8)), // deterministic random float between 0.2 and 4.0
+  originalFileName: Sync.each(() => faker.system.fileName()),
+  ratio: Sync.each((i) => 0.2 + ((i * 0.618_034) % 3.8)), // deterministic random float between 0.2 and 4.0
   ownerId: Sync.each(() => faker.string.uuid()),
   tags: [],
   thumbhash: Sync.each(() => faker.string.alphanumeric(28)),
@@ -55,7 +56,7 @@ export const timelineAssetFactory = Sync.makeFactory<TimelineAsset>({
 });
 
 export const toResponseDto = (...timelineAsset: TimelineAsset[]) => {
-  const bucketAssets: TimeBucketAssetResponseDto = {
+  const bucketAssets: TimeBucketAssetResponseDto & { originalFileName: string[] } = {
     city: [],
     country: [],
     duration: [],
@@ -68,6 +69,7 @@ export const toResponseDto = (...timelineAsset: TimelineAsset[]) => {
     fileCreatedAt: [],
     localOffsetHours: [],
     createdAt: [],
+    originalFileName: [],
     ownerId: [],
     projectionType: [],
     ratio: [],
@@ -86,6 +88,8 @@ export const toResponseDto = (...timelineAsset: TimelineAsset[]) => {
     bucketAssets.isTrashed.push(asset.isTrashed);
     bucketAssets.livePhotoVideoId.push(asset.livePhotoVideoId!);
     bucketAssets.fileCreatedAt.push(fileCreatedAt);
+    bucketAssets.createdAt.push(fromTimelinePlainDateTime(asset.createdAt).toUTC().toISO()!);
+    bucketAssets.originalFileName.push(asset.originalFileName);
     bucketAssets.ownerId.push(asset.ownerId);
     bucketAssets.projectionType.push(asset.projectionType!);
     bucketAssets.ratio.push(asset.ratio);

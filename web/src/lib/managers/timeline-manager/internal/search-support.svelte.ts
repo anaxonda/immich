@@ -1,5 +1,6 @@
-import { AssetOrder, AssetOrderBy, type AssetResponseDto } from '@immich/sdk';
+import type { AssetResponseDto } from '@immich/sdk';
 import { DateTime } from 'luxon';
+import { AlbumTimelineOrder, isDescendingAlbumOrder } from '$lib/utils/album-order';
 import { getOrderingDate, plainDateTimeCompare, type TimelineYearMonth } from '$lib/utils/timeline-util';
 import { TimelineManager } from '../timeline-manager.svelte';
 import type { TimelineMonth } from '../timeline-month.svelte';
@@ -124,11 +125,12 @@ export async function retrieveRange(timelineManager: TimelineManager, start: Ass
   if (!endTimelineMonth || !endAsset) {
     return [];
   }
-  const assetOrder: AssetOrder = timelineManager.getAssetOrder();
-  const orderBy: AssetOrderBy = timelineManager.getOrderBy();
+  const assetOrder = timelineManager.getAssetOrder();
+  const isDescending = isDescendingAlbumOrder(assetOrder ?? AlbumTimelineOrder.Desc);
+  const orderBy = timelineManager.getOrderBy();
   if (
     plainDateTimeCompare(
-      assetOrder === AssetOrder.Desc,
+      isDescending,
       getOrderingDate(startAsset, orderBy),
       getOrderingDate(endAsset, orderBy),
     ) < 0
