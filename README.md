@@ -2,6 +2,7 @@
 
 - Correct JXL rotation for files that only preserve orientation in EXIF/XMP metadata instead of the JXL codestream
 - Ability to hide selected albums from the main Photos timeline
+  - If an asset belongs to a hidden album, it is removed from the main timeline even if it also appears in another visible album
 - Ability to sort assets inside albums by filename (`A-Z` / `Z-A`)
 - Stable tie-breaking for album asset sorting so identical timestamps or filenames still produce deterministic order
 
