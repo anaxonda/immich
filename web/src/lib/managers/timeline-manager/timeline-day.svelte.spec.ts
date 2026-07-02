@@ -13,11 +13,7 @@ describe(TimelineDay.name, () => {
     const a = timelineAssetFactory.build({ originalFileName: 'a.jpg' });
     const b = timelineAssetFactory.build({ originalFileName: 'b.jpg' });
 
-    timelineDay.viewerAssets = [
-      new ViewerAsset(timelineDay, c),
-      new ViewerAsset(timelineDay, a),
-      new ViewerAsset(timelineDay, b),
-    ];
+    timelineDay.viewerAssets = [new ViewerAsset(c), new ViewerAsset(a), new ViewerAsset(b)];
     timelineDay.sortAssets(AlbumTimelineOrder.FilenameAsc);
 
     expect(timelineDay.getAssets().map((asset) => asset.originalFileName)).toEqual(['a.jpg', 'b.jpg', 'c.jpg']);
@@ -41,11 +37,7 @@ describe(TimelineDay.name, () => {
       fileCreatedAt: fromISODateTimeUTCToObject('2026-01-02T00:00:00.000Z'),
     });
 
-    timelineDay.viewerAssets = [
-      new ViewerAsset(timelineDay, third),
-      new ViewerAsset(timelineDay, first),
-      new ViewerAsset(timelineDay, second),
-    ];
+    timelineDay.viewerAssets = [new ViewerAsset(third), new ViewerAsset(first), new ViewerAsset(second)];
 
     timelineDay.sortAssets(AlbumTimelineOrder.FilenameAsc);
     expect(timelineDay.getAssets().map((asset) => asset.id)).toEqual(['a-id', 'b-id', 'c-id']);
@@ -72,11 +64,7 @@ describe(TimelineDay.name, () => {
       fileCreatedAt: fromISODateTimeUTCToObject('2026-01-01T00:00:00.000Z'),
     });
 
-    timelineDay.viewerAssets = [
-      new ViewerAsset(timelineDay, first),
-      new ViewerAsset(timelineDay, second),
-      new ViewerAsset(timelineDay, third),
-    ];
+    timelineDay.viewerAssets = [new ViewerAsset(first), new ViewerAsset(second), new ViewerAsset(third)];
 
     timelineDay.sortAssets(AlbumTimelineOrder.Asc);
     expect(timelineDay.getAssets().map((asset) => asset.id)).toEqual(['c-id', 'a-id', 'b-id']);
