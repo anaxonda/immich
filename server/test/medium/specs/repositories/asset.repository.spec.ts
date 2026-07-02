@@ -89,6 +89,11 @@ describe(AssetRepository.name, () => {
         ctx.newAsset({ ownerId: user.id, fileCreatedAt: createdAt, localDateTime: createdAt, originalFileName: 'alpha.jpg' }),
         ctx.newAsset({ ownerId: user.id, fileCreatedAt: createdAt, localDateTime: createdAt, originalFileName: 'middle.jpg' }),
       ]);
+      await Promise.all([
+        ctx.newExif({ assetId: zebra.id, make: 'Canon' }),
+        ctx.newExif({ assetId: alpha.id, make: 'Canon' }),
+        ctx.newExif({ assetId: middle.id, make: 'Canon' }),
+      ]);
 
       const ascendingBucket = await sut.getTimeBucket(
         '2026-03-01',
@@ -134,6 +139,10 @@ describe(AssetRepository.name, () => {
         originalFileName: 'hidden.jpg',
       });
       const { album } = await ctx.newAlbum({ ownerId: user.id }, [hiddenAsset.id]);
+      await Promise.all([
+        ctx.newExif({ assetId: visibleAsset.id, make: 'Canon' }),
+        ctx.newExif({ assetId: hiddenAsset.id, make: 'Canon' }),
+      ]);
 
       const bucket = await sut.getTimeBucket(
         '2026-03-01',

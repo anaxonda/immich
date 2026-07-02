@@ -6,6 +6,7 @@ import { AssetRepository } from 'src/repositories/asset.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
 import { PartnerRepository } from 'src/repositories/partner.repository';
 import { SharedLinkRepository } from 'src/repositories/shared-link.repository';
+import { UserRepository } from 'src/repositories/user.repository';
 import { DB } from 'src/schema';
 import { TimelineService } from 'src/services/timeline.service';
 import { newMediumService } from 'test/medium.factory';
@@ -17,7 +18,7 @@ let defaultDatabase: Kysely<DB>;
 const setup = (db?: Kysely<DB>) => {
   return newMediumService(TimelineService, {
     database: db || defaultDatabase,
-    real: [AssetRepository, AccessRepository, PartnerRepository],
+    real: [AssetRepository, AccessRepository, PartnerRepository, UserRepository],
     mock: [LoggingRepository],
   });
 };
@@ -129,6 +130,7 @@ describe(TimelineService.name, () => {
         livePhotoVideoId: [],
         fileCreatedAt: [],
         localOffsetHours: [],
+        originalFileName: [],
         ownerId: [],
         projectionType: [],
         ratio: [],
