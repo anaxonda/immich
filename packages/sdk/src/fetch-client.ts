@@ -2322,6 +2322,8 @@ export type SystemConfigFFmpegDto = {
     cqMode: CQMode;
     /** CRF */
     crf: number;
+    /** Automatically deinterlace interlaced video */
+    deinterlace: boolean;
     /** GOP size */
     gopSize: number;
     /** Max bitrate */

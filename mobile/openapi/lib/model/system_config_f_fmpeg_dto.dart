@@ -21,6 +21,7 @@ class SystemConfigFFmpegDto {
     required this.bframes,
     required this.cqMode,
     required this.crf,
+    required this.deinterlace,
     required this.gopSize,
     required this.maxBitrate,
     required this.preferredHwDevice,
@@ -64,6 +65,9 @@ class SystemConfigFFmpegDto {
   /// Minimum value: 0
   /// Maximum value: 51
   int crf;
+
+  /// Automatically deinterlace interlaced video
+  bool deinterlace;
 
   /// GOP size
   ///
@@ -121,6 +125,7 @@ class SystemConfigFFmpegDto {
     other.bframes == bframes &&
     other.cqMode == cqMode &&
     other.crf == crf &&
+    other.deinterlace == deinterlace &&
     other.gopSize == gopSize &&
     other.maxBitrate == maxBitrate &&
     other.preferredHwDevice == preferredHwDevice &&
@@ -147,6 +152,7 @@ class SystemConfigFFmpegDto {
     (bframes.hashCode) +
     (cqMode.hashCode) +
     (crf.hashCode) +
+    (deinterlace.hashCode) +
     (gopSize.hashCode) +
     (maxBitrate.hashCode) +
     (preferredHwDevice.hashCode) +
@@ -163,7 +169,7 @@ class SystemConfigFFmpegDto {
     (twoPass.hashCode);
 
   @override
-  String toString() => 'SystemConfigFFmpegDto[accel=$accel, accelDecode=$accelDecode, acceptedAudioCodecs=$acceptedAudioCodecs, acceptedContainers=$acceptedContainers, acceptedVideoCodecs=$acceptedVideoCodecs, bframes=$bframes, cqMode=$cqMode, crf=$crf, gopSize=$gopSize, maxBitrate=$maxBitrate, preferredHwDevice=$preferredHwDevice, preset=$preset, realtime=$realtime, refs=$refs, targetAudioCodec=$targetAudioCodec, targetResolution=$targetResolution, targetVideoCodec=$targetVideoCodec, temporalAQ=$temporalAQ, threads=$threads, tonemap=$tonemap, transcode=$transcode, twoPass=$twoPass]';
+  String toString() => 'SystemConfigFFmpegDto[accel=$accel, accelDecode=$accelDecode, acceptedAudioCodecs=$acceptedAudioCodecs, acceptedContainers=$acceptedContainers, acceptedVideoCodecs=$acceptedVideoCodecs, bframes=$bframes, cqMode=$cqMode, crf=$crf, deinterlace=$deinterlace, gopSize=$gopSize, maxBitrate=$maxBitrate, preferredHwDevice=$preferredHwDevice, preset=$preset, realtime=$realtime, refs=$refs, targetAudioCodec=$targetAudioCodec, targetResolution=$targetResolution, targetVideoCodec=$targetVideoCodec, temporalAQ=$temporalAQ, threads=$threads, tonemap=$tonemap, transcode=$transcode, twoPass=$twoPass]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -175,6 +181,7 @@ class SystemConfigFFmpegDto {
       json[r'bframes'] = this.bframes;
       json[r'cqMode'] = this.cqMode;
       json[r'crf'] = this.crf;
+      json[r'deinterlace'] = this.deinterlace;
       json[r'gopSize'] = this.gopSize;
       json[r'maxBitrate'] = this.maxBitrate;
       json[r'preferredHwDevice'] = this.preferredHwDevice;
@@ -209,6 +216,7 @@ class SystemConfigFFmpegDto {
         bframes: mapValueOfType<int>(json, r'bframes')!,
         cqMode: CQMode.fromJson(json[r'cqMode'])!,
         crf: mapValueOfType<int>(json, r'crf')!,
+        deinterlace: mapValueOfType<bool>(json, r'deinterlace')!,
         gopSize: mapValueOfType<int>(json, r'gopSize')!,
         maxBitrate: mapValueOfType<String>(json, r'maxBitrate')!,
         preferredHwDevice: mapValueOfType<String>(json, r'preferredHwDevice')!,
@@ -278,6 +286,7 @@ class SystemConfigFFmpegDto {
     'bframes',
     'cqMode',
     'crf',
+    'deinterlace',
     'gopSize',
     'maxBitrate',
     'preferredHwDevice',

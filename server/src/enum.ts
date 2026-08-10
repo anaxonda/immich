@@ -485,6 +485,15 @@ export enum VideoCodec {
   Av1 = 'av1',
 }
 
+export enum VideoFieldOrder {
+  Unknown = 'unknown',
+  Progressive = 'progressive',
+  Tt = 'tt',
+  Bb = 'bb',
+  Tb = 'tb',
+  Bt = 'bt',
+}
+
 export const VideoCodecSchema = z.enum(VideoCodec).describe('Target video codec').meta({ id: 'VideoCodec' });
 
 export type VideoSegmentCodec = VideoCodec.Av1 | VideoCodec.Hevc | VideoCodec.H264;

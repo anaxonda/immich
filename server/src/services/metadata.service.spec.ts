@@ -13,6 +13,7 @@ import {
   JobName,
   JobStatus,
   SourceType,
+  VideoFieldOrder,
 } from 'src/enum';
 import { ImmichTags } from 'src/repositories/metadata.repository';
 import { firstDateTime, MetadataService } from 'src/services/metadata.service';
@@ -678,6 +679,23 @@ describe(MetadataService.name, () => {
             dvProfile: null,
           }),
         }),
+      );
+    });
+
+    it('should persist video field order', async () => {
+      const asset = AssetFactory.create({ type: AssetType.Video });
+      mocks.assetJob.getForMetadataExtraction.mockResolvedValue(getForMetadataExtraction(asset));
+      mocks.media.probe.mockResolvedValue({
+        ...videoInfoStub.videoStreamH264,
+        videoStreams: [{ ...videoInfoStub.videoStreamH264.videoStreams[0], fieldOrder: VideoFieldOrder.Tb }],
+      });
+      mocks.media.probePackets.mockResolvedValue(emptyPackets);
+      mockReadTags({});
+
+      await sut.handleMetadataExtraction({ id: asset.id });
+
+      expect(mocks.asset.upsertExif).toHaveBeenCalledWith(
+        expect.objectContaining({ video: expect.objectContaining({ fieldOrder: VideoFieldOrder.Tb }) }),
       );
     });
 

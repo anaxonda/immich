@@ -83,6 +83,14 @@
               isEdited={configToEdit.ffmpeg.transcode !== config.ffmpeg.transcode}
             />
 
+            <SettingSwitch
+              title={$t('admin.transcoding_automatic_deinterlacing')}
+              {disabled}
+              subtitle={$t('admin.transcoding_automatic_deinterlacing_description')}
+              bind:checked={configToEdit.ffmpeg.deinterlace}
+              isEdited={configToEdit.ffmpeg.deinterlace !== config.ffmpeg.deinterlace}
+            />
+
             <SettingCheckboxes
               label={$t('admin.transcoding_accepted_video_codecs')}
               {disabled}

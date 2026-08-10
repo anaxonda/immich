@@ -25738,6 +25738,10 @@
             "minimum": 0,
             "type": "integer"
           },
+          "deinterlace": {
+            "description": "Automatically deinterlace interlaced video",
+            "type": "boolean"
+          },
           "gopSize": {
             "description": "GOP size",
             "maximum": 9007199254740991,
@@ -25805,6 +25809,7 @@
           "bframes",
           "cqMode",
           "crf",
+          "deinterlace",
           "gopSize",
           "maxBitrate",
           "preferredHwDevice",

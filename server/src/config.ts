@@ -46,6 +46,7 @@ export type SystemConfig = {
     transcode: TranscodePolicy;
     accel: TranscodeHardwareAcceleration;
     accelDecode: boolean;
+    deinterlace: boolean;
     tonemap: ToneMapping;
     realtime: {
       enabled: boolean;
@@ -248,6 +249,7 @@ export const defaults = Object.freeze<SystemConfig>({
     tonemap: ToneMapping.Hable,
     accel: TranscodeHardwareAcceleration.Disabled,
     accelDecode: true,
+    deinterlace: false,
     realtime: {
       enabled: false,
       videoCodecs: [VideoCodec.H264, VideoCodec.Hevc],

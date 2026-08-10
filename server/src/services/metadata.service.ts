@@ -343,6 +343,7 @@ export class MetadataService extends BaseService {
             formatName: format.formatName,
             formatLongName: format.formatLongName,
             pixelFormat: video.pixelFormat,
+            fieldOrder: video.fieldOrder,
           }
         : undefined;
 

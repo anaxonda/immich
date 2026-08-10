@@ -151,6 +151,7 @@ export function withVideoStream(eb: ExpressionBuilder<DB, 'asset_exif' | 'asset_
         'asset_exif.exifImageWidth as width',
         'asset_exif.exifImageHeight as height',
         'asset_video.pixelFormat',
+        'asset_video.fieldOrder',
         'asset_video.frameCount',
         'asset_exif.fps as frameRate',
         'asset_video.timeBase',

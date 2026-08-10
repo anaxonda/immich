@@ -233,6 +233,7 @@ export class AssetRepository {
               formatName: ref('asset_video.formatName'),
               formatLongName: ref('asset_video.formatLongName'),
               pixelFormat: ref('asset_video.pixelFormat'),
+              fieldOrder: ref('asset_video.fieldOrder'),
             })),
           ),
       );

@@ -19,6 +19,7 @@ import {
   TranscodeHardwareAcceleration,
   TranscodePolicy,
   VideoCodec,
+  VideoFieldOrder,
 } from 'src/enum';
 import { MediaService } from 'src/services/media.service';
 import { AudioStreamInfo, JobCounts, RawImageInfo, VideoFormat, VideoStreamInfo } from 'src/types';
@@ -2110,6 +2111,86 @@ describe(MediaService.name, () => {
           twoPass: false,
         }),
       );
+    });
+
+    it('should not deinterlace when automatic deinterlacing is disabled', async () => {
+      mocks.assetJob.getForVideoConversion.mockResolvedValue({
+        ...asset,
+        videoStream: { ...asset.videoStream, fieldOrder: VideoFieldOrder.Tb },
+      });
+
+      await sut.handleVideoConversion({ id: 'video-id' });
+
+      expect(mocks.media.transcode).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { fieldOrder: VideoFieldOrder.Tt, parity: 'tff' },
+      { fieldOrder: VideoFieldOrder.Tb, parity: 'tff' },
+      { fieldOrder: VideoFieldOrder.Bb, parity: 'bff' },
+      { fieldOrder: VideoFieldOrder.Bt, parity: 'bff' },
+    ])('should deinterlace $fieldOrder video with $parity parity', async ({ fieldOrder, parity }) => {
+      const frameCount = asset.videoStream.frameCount;
+      mocks.assetJob.getForVideoConversion.mockResolvedValue({
+        ...asset,
+        videoStream: { ...asset.videoStream, fieldOrder },
+      });
+      mocks.systemMetadata.get.mockResolvedValue({
+        ffmpeg: {
+          accel: TranscodeHardwareAcceleration.Qsv,
+          deinterlace: true,
+          targetResolution: 'original',
+        },
+      });
+
+      await sut.handleVideoConversion({ id: 'video-id' });
+
+      expect(mocks.media.transcode).toHaveBeenCalledWith(
+        '/original/path.ext',
+        expect.any(String),
+        expect.objectContaining({
+          outputOptions: expect.arrayContaining([
+            '-c:v',
+            'h264',
+            '-vf',
+            `bwdif=mode=send_field:parity=${parity}:deint=all`,
+            '-fps_mode',
+            'passthrough',
+          ]),
+          progress: { frameCount: frameCount * 2, percentInterval: 5 },
+        }),
+      );
+      const command = mocks.media.transcode.mock.calls[0][2];
+      expect(command.outputOptions).not.toEqual(expect.arrayContaining([expect.stringContaining('qsv')]));
+    });
+
+    it.each([VideoFieldOrder.Progressive, VideoFieldOrder.Unknown])(
+      'should not require transcoding for %s field order',
+      async (fieldOrder) => {
+        mocks.assetJob.getForVideoConversion.mockResolvedValue({
+          ...asset,
+          videoStream: { ...asset.videoStream, fieldOrder },
+        });
+        mocks.systemMetadata.get.mockResolvedValue({ ffmpeg: { deinterlace: true } });
+
+        await sut.handleVideoConversion({ id: 'video-id' });
+
+        expect(mocks.media.transcode).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should honor disabled transcoding for interlaced video', async () => {
+      mocks.assetJob.getForVideoConversion.mockResolvedValue({
+        ...asset,
+        videoStream: { ...asset.videoStream, fieldOrder: VideoFieldOrder.Tb },
+      });
+      mocks.systemMetadata.get.mockResolvedValue({
+        ffmpeg: { deinterlace: true, transcode: TranscodePolicy.Disabled },
+      });
+
+      await sut.handleVideoConversion({ id: 'video-id' });
+
+      expect(mocks.media.transcode).not.toHaveBeenCalled();
     });
 
     it('should transcode when optimal and too big', async () => {

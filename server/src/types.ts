@@ -30,6 +30,7 @@ import {
   SystemMetadataKey,
   TranscodeTarget,
   UserMetadataKey,
+  VideoFieldOrder,
   WorkflowType,
 } from 'src/enum';
 
@@ -99,6 +100,7 @@ export interface VideoStreamInfo {
   timeBase: number | null;
   bitrate: number;
   pixelFormat: string;
+  fieldOrder: VideoFieldOrder;
   colorPrimaries: ColorPrimaries;
   colorMatrix: ColorMatrix;
   colorTransfer: ColorTransfer;
@@ -199,6 +201,7 @@ export interface VideoCodecSWConfig {
     video: VideoStreamInfo,
     audio?: AudioStreamInfo,
     format?: VideoFormat,
+    deinterlace?: boolean,
   ): TranscodeCommand;
   getHlsCommand(options: HlsCommandOptions, video: VideoStreamInfo, audio?: AudioStreamInfo): string[];
 }

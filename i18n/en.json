@@ -401,6 +401,8 @@
     "transcoding_advanced_options_description": "Options most users should not need to change",
     "transcoding_audio_codec": "Audio codec",
     "transcoding_audio_codec_description": "Opus is the highest quality option, but has lower compatibility with old devices or software.",
+    "transcoding_automatic_deinterlacing": "Automatic deinterlacing",
+    "transcoding_automatic_deinterlacing_description": "Convert detected interlaced video to field-rate progressive video using software transcoding.",
     "transcoding_bitrate_description": "Videos higher than max bitrate or not in an accepted format",
     "transcoding_codecs_learn_more": "To learn more about the terminology used here, refer to FFmpeg documentation for <h264-link>H.264 codec</h264-link>, <hevc-link>HEVC codec</hevc-link> and <vp9-link>VP9 codec</vp9-link>.",
     "transcoding_constant_quality_mode": "Constant quality mode",

@@ -9,6 +9,7 @@ import {
   TranscodeHardwareAcceleration,
   TranscodeTarget,
   VideoCodec,
+  VideoFieldOrder,
 } from 'src/enum';
 import {
   AudioStreamInfo,
@@ -26,6 +27,25 @@ export const isVideoRotated = (videoStream: VideoStreamInfo): boolean => Math.ab
 
 export const isVideoVertical = (videoStream: VideoStreamInfo): boolean =>
   videoStream.height > videoStream.width || isVideoRotated(videoStream);
+
+export const getDeinterlaceParity = (fieldOrder: VideoFieldOrder): 'tff' | 'bff' | null => {
+  switch (fieldOrder) {
+    case VideoFieldOrder.Tt:
+    case VideoFieldOrder.Tb: {
+      return 'tff';
+    }
+    case VideoFieldOrder.Bb:
+    case VideoFieldOrder.Bt: {
+      return 'bff';
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
+export const isInterlacedVideo = (videoStream: VideoStreamInfo): boolean =>
+  getDeinterlaceParity(videoStream.fieldOrder) !== null;
 
 export const getOutputSize = (videoStream: VideoStreamInfo, targetRes: number) => {
   const factor = Math.max(videoStream.height, videoStream.width) / Math.min(videoStream.height, videoStream.width);
@@ -134,7 +154,13 @@ export class BaseConfig implements VideoCodecSWConfig {
     return handler;
   }
 
-  getCommand(target: TranscodeTarget, video: VideoStreamInfo, audio?: AudioStreamInfo, format?: VideoFormat) {
+  getCommand(
+    target: TranscodeTarget,
+    video: VideoStreamInfo,
+    audio?: AudioStreamInfo,
+    format?: VideoFormat,
+    deinterlace = false,
+  ) {
     const options = {
       inputOptions: this.getBaseInputOptions(video, format),
       outputOptions: [
@@ -150,10 +176,10 @@ export class BaseConfig implements VideoCodecSWConfig {
         'verbose',
       ],
       twoPass: this.eligibleForTwoPass(),
-      progress: { frameCount: video.frameCount, percentInterval: 5 },
+      progress: { frameCount: deinterlace ? video.frameCount * 2 : video.frameCount, percentInterval: 5 },
     } as TranscodeCommand;
     if ([TranscodeTarget.All, TranscodeTarget.Video].includes(target)) {
-      const filters = this.getFilterOptions(video);
+      const filters = this.getFilterOptions(video, deinterlace);
       if (filters.length > 0) {
         options.outputOptions.push('-vf', filters.join(','));
       }
@@ -254,8 +280,13 @@ export class BaseConfig implements VideoCodecSWConfig {
     return [];
   }
 
-  getFilterOptions(videoStream: VideoStreamInfo) {
+  getFilterOptions(videoStream: VideoStreamInfo, deinterlace = false) {
     const options = [];
+    const parity = deinterlace ? getDeinterlaceParity(videoStream.fieldOrder) : null;
+    if (parity) {
+      options.push(`bwdif=mode=send_field:parity=${parity}:deint=all`);
+    }
+
     if (this.shouldScale(videoStream)) {
       options.push(`scale=${this.getScaling(videoStream)}`);
     }

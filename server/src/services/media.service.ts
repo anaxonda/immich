@@ -43,7 +43,7 @@ import {
 import { getAssetFile, getDimensions } from 'src/utils/asset.util';
 import { checkFaceVisibility, checkOcrVisibility } from 'src/utils/editor';
 import { readJxlIntrinsicOrientation } from 'src/utils/jxl';
-import { BaseConfig, ThumbnailConfig } from 'src/utils/media';
+import { BaseConfig, isInterlacedVideo, ThumbnailConfig } from 'src/utils/media';
 import { mimeTypes } from 'src/utils/mime-types';
 import { clamp } from 'src/utils/misc';
 import { getOutputDimensions } from 'src/utils/transform';
@@ -621,6 +621,7 @@ export class MediaService extends BaseService {
     }
 
     let { ffmpeg } = await this.getConfig({ withCache: true });
+    const deinterlace = ffmpeg.deinterlace && isInterlacedVideo(videoStream);
     const target = this.getTranscodeTarget(ffmpeg, videoStream, audioStream);
     if (target === TranscodeTarget.None && !this.isRemuxRequired(ffmpeg, format)) {
       const encodedVideo = getAssetFile(asset.files, AssetFileType.EncodedVideo, { isEdited: false });
@@ -635,7 +636,18 @@ export class MediaService extends BaseService {
       return JobStatus.Skipped;
     }
 
-    const command = BaseConfig.create(ffmpeg, this.videoInterfaces).getCommand(target, videoStream, audioStream);
+    if (deinterlace && ffmpeg.accel !== TranscodeHardwareAcceleration.Disabled) {
+      this.logger.log(`Interlaced video detected for asset ${asset.id}; disabling hardware acceleration`);
+      ffmpeg = { ...ffmpeg, accel: TranscodeHardwareAcceleration.Disabled };
+    }
+
+    const command = BaseConfig.create(ffmpeg, this.videoInterfaces).getCommand(
+      target,
+      videoStream,
+      audioStream,
+      undefined,
+      deinterlace,
+    );
     if (ffmpeg.accel === TranscodeHardwareAcceleration.Disabled) {
       this.logger.log(`Transcoding video ${asset.id} without hardware acceleration`);
     } else {
@@ -657,7 +669,13 @@ export class MediaService extends BaseService {
         try {
           this.logger.error(`Retrying with ${ffmpeg.accel.toUpperCase()}-accelerated encoding and software decoding`);
           ffmpeg = { ...ffmpeg, accelDecode: false };
-          const command = BaseConfig.create(ffmpeg, this.videoInterfaces).getCommand(target, videoStream, audioStream);
+          const command = BaseConfig.create(ffmpeg, this.videoInterfaces).getCommand(
+            target,
+            videoStream,
+            audioStream,
+            undefined,
+            deinterlace,
+          );
           await this.mediaRepository.transcode(input, output, command);
           isPartialFallbackSuccess = true;
         } catch (error: any) {
@@ -668,7 +686,13 @@ export class MediaService extends BaseService {
       if (!isPartialFallbackSuccess) {
         this.logger.error(`Retrying with ${ffmpeg.accel.toUpperCase()} acceleration disabled`);
         ffmpeg = { ...ffmpeg, accel: TranscodeHardwareAcceleration.Disabled };
-        const command = BaseConfig.create(ffmpeg, this.videoInterfaces).getCommand(target, videoStream, audioStream);
+        const command = BaseConfig.create(ffmpeg, this.videoInterfaces).getCommand(
+          target,
+          videoStream,
+          audioStream,
+          undefined,
+          deinterlace,
+        );
         await this.mediaRepository.transcode(input, output, command);
       }
     }
@@ -739,7 +763,10 @@ export class MediaService extends BaseService {
     const isLargerThanTargetBitrate = maxBitrate > 0 && stream.bitrate > maxBitrate;
 
     const isTargetVideoCodec = ffmpegConfig.acceptedVideoCodecs.includes(stream.codecName as VideoCodec);
-    const isRequired = !isTargetVideoCodec || !stream.pixelFormat.endsWith('420p');
+    const isRequired =
+      !isTargetVideoCodec ||
+      !stream.pixelFormat.endsWith('420p') ||
+      (ffmpegConfig.deinterlace && isInterlacedVideo(stream));
 
     switch (ffmpegConfig.transcode) {
       case TranscodePolicy.Disabled: {

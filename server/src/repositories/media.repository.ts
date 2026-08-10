@@ -23,6 +23,7 @@ import {
   HevcProfile,
   LogLevel,
   RawExtractedFormat,
+  VideoFieldOrder,
 } from 'src/enum';
 import { LoggingRepository } from 'src/repositories/logging.repository';
 import {
@@ -261,6 +262,7 @@ export class MediaRepository {
             rotation: this.parseInt(stream.rotation),
             bitrate: this.parseInt(stream.bit_rate),
             pixelFormat: stream.pix_fmt || 'yuv420p',
+            fieldOrder: this.parseEnum(VideoFieldOrder, stream.field_order) ?? VideoFieldOrder.Unknown,
             colorPrimaries: this.parseEnum(ColorPrimaries, stream.color_primaries) ?? ColorPrimaries.Unknown,
             colorMatrix: this.parseEnum(ColorMatrix, stream.color_space) ?? ColorMatrix.Unknown,
             colorTransfer: this.parseEnum(ColorTransfer, stream.color_transfer) ?? ColorTransfer.Unknown,

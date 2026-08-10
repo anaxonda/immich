@@ -117,6 +117,7 @@ const SystemConfigFFmpegSchema = z
     transcode: TranscodePolicySchema,
     accel: TranscodeHardwareAccelerationSchema,
     accelDecode: configBool.describe('Accelerated decode'),
+    deinterlace: configBool.describe('Automatically deinterlace interlaced video'),
     tonemap: ToneMappingSchema,
     realtime: z
       .object({

@@ -1,4 +1,5 @@
 import { Column, ForeignKeyColumn, Table } from '@immich/sql-tools';
+import { VideoFieldOrder } from 'src/enum';
 import { AssetTable } from 'src/schema/tables/asset.table';
 
 @Table('asset_audio')
@@ -71,6 +72,9 @@ export class AssetVideoTable {
 
   @Column({ type: 'text' })
   pixelFormat!: string;
+
+  @Column({ type: 'text', default: VideoFieldOrder.Unknown })
+  fieldOrder!: VideoFieldOrder;
 }
 
 @Table('asset_keyframe')
