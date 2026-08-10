@@ -7,7 +7,10 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
 
 RUN npm install --global corepack@latest && \
   corepack enable pnpm && \
-  pnpm config set store-dir "$PNPM_HOME"
+  pnpm config set store-dir "$PNPM_HOME" && \
+  pnpm config set fetch-timeout 300000 && \
+  pnpm config set fetch-retries 5 && \
+  pnpm config set network-concurrency 8
 
 FROM builder AS server
 
