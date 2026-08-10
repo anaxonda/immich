@@ -63,12 +63,13 @@ COPY --from=ghcr.io/jdx/mise:2026.7.11@sha256:6599c81b0da6206cbf5151df97a36794d7
 
 WORKDIR /app
 COPY ./mise.toml ./mise.toml
+COPY ./mise.lock ./mise.lock
 COPY ./packages/plugin-core/mise.toml ./packages/plugin-core/
 ENV MISE_TRUSTED_CONFIG_PATHS=/app/mise.toml
 ENV MISE_DATA_DIR=/buildcache/mise
 ENV MISE_DISABLE_TOOLS=flutter
-RUN --mount=type=cache,id=mise-tools-${TARGETPLATFORM},target=/buildcache/mise \
-  mise install
+RUN --mount=type=cache,id=mise-tools-locked-${TARGETPLATFORM},target=/buildcache/mise \
+  mise install --locked
 
 COPY ./packages/sdk ./packages/sdk/
 COPY ./packages/plugin-core ./packages/plugin-core/
@@ -80,7 +81,7 @@ RUN --mount=type=cache,id=pnpm-packages,target=/buildcache/pnpm-store \
   --mount=type=bind,source=.pnpmfile.cjs,target=.pnpmfile.cjs \
   --mount=type=bind,source=pnpm-lock.yaml,target=pnpm-lock.yaml \
   --mount=type=bind,source=pnpm-workspace.yaml,target=pnpm-workspace.yaml \
-  --mount=type=cache,id=mise-tools-${TARGETPLATFORM},target=/buildcache/mise \
+  --mount=type=cache,id=mise-tools-locked-${TARGETPLATFORM},target=/buildcache/mise \
   mise //:plugins
 
 FROM ghcr.io/immich-app/base-server-prod:202607211135@sha256:ced131da7523544fe975cfd25abd67386e712e39496340b437cd95a08d0a18f3
