@@ -1,8 +1,8 @@
 {
   "name": "immich-plugin-core",
-  "version": "2.0.2",
+  "version": "2.0.1",
   "title": "Immich Core Plugin",
-  "description": "Core workflow capabilities for Immich",
+  "description": "Core workflow capabilities for Immich (path-aware file filter)",
   "author": "Immich Team",
   "wasmPath": "dist/plugin.wasm",
   "templates": [
