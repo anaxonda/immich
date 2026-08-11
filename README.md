@@ -1,14 +1,38 @@
-_**this fork adds local behavior and build changes on top of upstream Immich v3.1.0**_
+_**This fork carries the following changes on top of upstream Immich v3.1.0:**_
 
-- Correct JPEG XL rotation when orientation is preserved in EXIF/XMP metadata instead of the JXL codestream
-- Hide selected albums from the main Photos timeline
-  - If an asset belongs to a hidden album, it is removed from the main timeline even if it also appears in another visible album
-- Sort assets inside albums by filename (`A-Z` / `Z-A`)
-- Stable tie-breaking for album asset sorting so identical timestamps or filenames still produce deterministic order
-- Collapse stacked assets in album views
-- Automatically deinterlace detected TFF/BFF video into field-rate progressive encoded derivatives
-- Path-aware workflow filtering for creating and populating albums from external-library paths
-- More reliable local Docker builds through hardened pnpm downloads and locked mise plugin tools
+- **JPEG XL orientation**
+  - Detect orientation stored in JPEG XL EXIF/XMP metadata when the codestream does not provide usable orientation.
+  - Harden malformed and short-container probing so orientation detection fails safely.
+  - Integrate the custom probe with Immich v3.1 media processing and MIME handling.
+  - Add focused JPEG XL orientation and media-service tests.
+- **Album timeline visibility**
+  - Add a per-user list of albums hidden from the main Photos timeline.
+  - Exclude an asset when it belongs to any hidden album, even if it also belongs to a visible album.
+  - Apply hidden-album filtering consistently to server timeline queries and web timeline insertion/search paths.
+- **Album ordering and presentation**
+  - Add filename ascending (`A-Z`) and descending (`Z-A`) album ordering.
+  - Add stable secondary ordering for equal timestamps and filenames.
+  - Correct the timeline `createdAt` ordering regression introduced while extending album ordering.
+  - Collapse stacked assets in album views.
+- **Automatic video deinterlacing**
+  - Persist FFprobe `field_order` values through a new `asset_video.fieldOrder` migration and generated API types.
+  - Add an **Automatic deinterlacing** administration setting, disabled by default.
+  - Treat detected interlacing as a conversion requirement under the `required`, `optimal`, and `bitrate` policies.
+  - Convert TFF/BFF input with `bwdif=mode=send_field`, preserving field-rate output such as 29.97i to 59.94p.
+  - Use the predictable software transcode path for interlaced assets while leaving progressive hardware transcoding available.
+  - Leave real-time HLS and thumbnail generation unchanged.
+- **Path-based workflow albums**
+  - Fix the core workflow file filter so **Use path** matches `asset.originalPath` instead of always matching `originalFileName`.
+  - Support native workflows that filter external-library paths and create or populate family and document albums.
+  - Change the core plugin manifest hash while retaining its name and version so Immich refreshes the PostgreSQL-cached plugin artifact in place.
+  - Document metadata-extraction backfills and representative workflow verification.
+- **Local Docker build reliability**
+  - Increase pnpm fetch timeout and retries while limiting network concurrency for slow registry connections.
+  - Copy `mise.lock`, install plugin tools with `mise install --locked`, and use a separate locked-tool cache.
+- **Generated artifacts and compatibility coverage**
+  - Update checked-in OpenAPI, TypeScript SDK, Dart model, schema, enum, localization, fixture, and test artifacts required by the custom fields and behavior.
+  - Carry Immich v3.1 compatibility fixes for the custom JPEG XL, album, timeline, and deinterlacing tests.
+  - Retain `rotation-fork.log` as the JPEG XL orientation investigation record.
 
 See [FORK.md](FORK.md) for implementation details, deployment notes, and required backfill procedures.
 
