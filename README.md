@@ -1,10 +1,16 @@
-***this fork adds a few local behavior changes on top of upstream Immich***
+_**this fork adds local behavior and build changes on top of upstream Immich v3.1.0**_
 
-- Correct JXL rotation for files that only preserve orientation in EXIF/XMP metadata instead of the JXL codestream
-- Ability to hide selected albums from the main Photos timeline
+- Correct JPEG XL rotation when orientation is preserved in EXIF/XMP metadata instead of the JXL codestream
+- Hide selected albums from the main Photos timeline
   - If an asset belongs to a hidden album, it is removed from the main timeline even if it also appears in another visible album
-- Ability to sort assets inside albums by filename (`A-Z` / `Z-A`)
+- Sort assets inside albums by filename (`A-Z` / `Z-A`)
 - Stable tie-breaking for album asset sorting so identical timestamps or filenames still produce deterministic order
+- Collapse stacked assets in album views
+- Automatically deinterlace detected TFF/BFF video into field-rate progressive encoded derivatives
+- Path-aware workflow filtering for creating and populating albums from external-library paths
+- More reliable local Docker builds through hardened pnpm downloads and locked mise plugin tools
+
+See [FORK.md](FORK.md) for implementation details, deployment notes, and required backfill procedures.
 
 <p align="center"> 
   <br/>
@@ -49,11 +55,8 @@
   <a href="readme_i18n/README_ml_IN.md">മലയാളം</a>
 </p>
 
-
 > [!WARNING]
 > ⚠️ Always follow [3-2-1](https://www.backblaze.com/blog/the-3-2-1-backup-strategy/) backup plan for your precious photos and videos!
-> 
- 
 
 > [!NOTE]
 > You can find the main documentation, including installation guides, at https://immich.app/.
